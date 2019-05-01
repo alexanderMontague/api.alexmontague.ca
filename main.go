@@ -4,6 +4,7 @@ import (
 	"am.ca_server/controllers"
 	"fmt"
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 	"log"
 	"net/http"
 )
@@ -24,6 +25,12 @@ func handleRequests() {
 
 func main() {
 	fmt.Println("Running server on port", PORT)
+
+	// load dotenv variables
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 
 	handleRequests()
 }
