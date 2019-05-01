@@ -1,9 +1,9 @@
-package functions
+package helpers
 
 import (
 	"fmt"
 )
 
-TestFunc() {
+func testFunc() {
 	fmt.Println("Test Func...")
 }

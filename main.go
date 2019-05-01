@@ -13,17 +13,11 @@ const (
 	PORT = ":8080"
 )
 
-// Response : format of all responses coming back from server
-type Response struct {
-	Error   bool   `json:"error"`
-	Code    int    `json:"code"`
-	Message string `json:"message"`
-}
-
 func handleRequests() {
 	router := mux.NewRouter().StrictSlash(true)
 
 	router.HandleFunc("/", controllers.BaseURL).Methods("GET")
+	router.HandleFunc("/email", controllers.EmailService).Methods("POST")
 
 	log.Fatal(http.ListenAndServe(PORT, router))
 }

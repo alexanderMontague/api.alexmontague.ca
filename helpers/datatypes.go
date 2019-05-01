@@ -1,4 +1,4 @@
-package datatypes
+package helpers
 
 // Response : format of all responses coming back from server
 type Response struct {
