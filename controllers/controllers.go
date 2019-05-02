@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/mailgun/mailgun-go"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -27,7 +26,8 @@ func EmailService(w http.ResponseWriter, r *http.Request) {
 	var responseEmail helpers.Email
 	json.NewDecoder(r.Body).Decode(&responseEmail)
 
-	// fmt.Println(responseEmail.Sender, responseEmail.ToEmail, responseEmail.FromEmail, responseEmail.Subject, responseEmail.Message)
+	// set headers
+	w.Header().Set("content-type", "application/json")
 
 	// Create an instance of the Mailgun Client
 	mg := mailgun.NewMailgun(os.Getenv("MAILGUN_DOMAIN"), os.Getenv("MAILGUN_API_KEY"))
@@ -43,11 +43,11 @@ func EmailService(w http.ResponseWriter, r *http.Request) {
 	// Send the message
 	resp, id, err := mg.Send(ctx, message)
 	if err != nil {
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 401, Message: err.Error()})
-		log.Fatal(err)
+		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 401, Message: "Something went wrong. Sorry!"})
+		fmt.Println(err.Error())
+		return
 	}
 	fmt.Printf("ID: %s Resp: %s\n", id, resp)
 
-	w.Header().Set("content-type", "application/json")
 	json.NewEncoder(w).Encode(helpers.Response{Error: false, Code: 200, Message: "Email Received"})
 }
