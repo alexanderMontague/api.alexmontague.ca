@@ -1,7 +1,7 @@
 package controllers
 
 import (
-	"am.ca_server/helpers"
+	"am.ca-server/helpers"
 	"context"
 	"encoding/json"
 	"fmt"

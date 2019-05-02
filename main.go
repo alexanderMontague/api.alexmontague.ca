@@ -1,7 +1,7 @@
 package main
 
 import (
-	"am.ca_server/controllers"
+	"am.ca-server/controllers"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
