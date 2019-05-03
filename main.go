@@ -11,7 +11,7 @@ import (
 
 const (
 	// PORT : port that server is hosted under
-	PORT = ":8080"
+	PORT = ":8088"
 )
 
 func handleRequests() {
