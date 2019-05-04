@@ -1,7 +1,7 @@
 # am.ca-server
 My personal server that I use for www.alexmontague.ca
 
-![](https://i.imgur.com/wxrlffA.jpg)
+![](https://i.imgur.com/Xn3AuBS.jpg)
 
 - Currently this server is hosted on a raspberry pi, running 24/7 as my personal API and email server!
 - I wanted a server that I could completely customize to my current needs, and have the scalability to fulfil my future needs!
