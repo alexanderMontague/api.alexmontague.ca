@@ -19,6 +19,7 @@ func handleRequests() {
 
 	router.HandleFunc("/", controllers.BaseURL).Methods("GET")
 	router.HandleFunc("/email", controllers.EmailService).Methods("POST")
+	router.HandleFunc("/resume", controllers.ResumeJSON).Methods("GET")
 
 	log.Fatal(http.ListenAndServe(PORT, router))
 }
