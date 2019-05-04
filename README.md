@@ -1,5 +1,5 @@
 <h1>🖥&nbsp;&nbsp;am.ca-server&nbsp;&nbsp;📬</h1>
-_My personal server that I use for www.alexmontague.ca_
+<i>My personal server that I use for www.alexmontague.ca</i>
 
 ![](https://i.imgur.com/Xn3AuBS.jpg)
 
