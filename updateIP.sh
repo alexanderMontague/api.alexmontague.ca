@@ -32,7 +32,7 @@ ret=$(curl -s GET "http://ipinfo.io/json")
 currentIp=$(echo $ret | grep -oE "\b([0-9]{1,3}\.){3}[0-9]{1,3}\b")
 echo "currentIp:" $currentIp
 
- if [ $dnsIp != $currentIp ];
+ if [ "$dnsIp" != "$currentIp" ];
  then
 	echo "Ips are not equal"
 	request='{"data":"'$currentIp'","ttl":3600}'
