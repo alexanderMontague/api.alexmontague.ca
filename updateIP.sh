@@ -20,7 +20,7 @@ secret=$GODADDY_SECRET   # secret for godaddy developer API
 headers="Authorization: sso-key $key:$secret"
 
 # echo $headers
-echo "[ date ]"
+echo [ date +"%A, %b %d, %Y %I:%M %p" ]
 
 result=$(curl -s -X GET -H "$headers" \
  "https://api.godaddy.com/v1/domains/$domain/records/A/$name")
