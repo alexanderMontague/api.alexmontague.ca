@@ -2,6 +2,7 @@ package main
 
 import (
 	"am.ca-server/controllers"
+	"am.ca-server/middleware"
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
@@ -16,6 +17,8 @@ const (
 
 func handleRequests() {
 	router := mux.NewRouter().StrictSlash(true)
+
+	router.Use(middleware.LoggingMiddleware)
 
 	router.HandleFunc("/", controllers.BaseURL).Methods("GET")
 	router.HandleFunc("/email", controllers.EmailService).Methods("POST")

@@ -48,7 +48,7 @@ func EmailService(w http.ResponseWriter, r *http.Request) {
 	// Send the message
 	resp, id, err := mg.Send(ctx, message)
 	if err != nil {
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 401, Message: "Something went wrong. Sorry!"})
+		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 401, Message: "Something went wrong. Make sure you have all parameters!"})
 		fmt.Println(err.Error())
 		return
 	}
