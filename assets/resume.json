@@ -160,6 +160,16 @@
         "tech": ["react", "firebase"]
       },
       {
+        "title": "am.ca Server",
+        "category": "My personal server hosted on a raspberry pi that I use for alexmontague.ca. Try pinging [api.alexmontague.ca/resume] for a JSON representation of my resume! Written using Golang and configured using nginx. I used this as an opportunity to learn more about Go and Netoworking!",
+        "image": "amServer.png",
+        "links": {
+          "github": "https://github.com/alexanderMontague/am.ca-server",
+          "hosted": "api.alexmontague.ca"
+        },
+        "tech": ["go", "nginx", "raspberrypi"]
+      },
+      {
         "title": "BubbleT",
         "category": "BubbleT is an app that collects and displays salary records from Canada's public sector high earners. BubbleT was a team project for System Analysis and Design in Applications (CIS*3750, Winter 2019).",
         "image": "bubbleT.png",

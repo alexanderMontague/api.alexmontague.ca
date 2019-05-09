@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"github.com/mholt/certmagic"
 	"log"
 	"net/http"
 )
@@ -17,6 +18,7 @@ const (
 
 func handleRequests() {
 	router := mux.NewRouter().StrictSlash(true)
+	certmagic.HTTPS([]string{"api.alexmontague.ca"}, router)
 
 	router.Use(middleware.LoggingMiddleware)
 
