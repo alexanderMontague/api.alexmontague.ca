@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 	"log"
 	"net/http"
 )
@@ -24,7 +25,10 @@ func handleRequests() {
 	router.HandleFunc("/email", controllers.EmailService).Methods("POST")
 	router.HandleFunc("/resume", controllers.ResumeJSON).Methods("GET")
 
-	log.Fatal(http.ListenAndServe(PORT, router))
+	// CORS middleware
+	handler := cors.Default().Handler(router)
+
+	log.Fatal(http.ListenAndServe(PORT, handler))
 }
 
 func main() {
