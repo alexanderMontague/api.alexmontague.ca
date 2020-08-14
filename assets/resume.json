@@ -5,32 +5,43 @@
     "description": "I am always looking for ",
     "description2": ", whether that be open source projects, internships, or new technologies, ",
     "image": "profilepic.jpg",
-    "bio": "I am a software engineer. Not only do I like to program, but I am passionate about writing clean, smart, and efficient code! Over my schooling and work terms I have been exposed to many languages and frameworks, but some of my favourite languages are Javascript, C and Python. I recently started my dive into web development, more specifically using the ReactJS/NodeJS libraries. I hope to explore more full stack opportunities in the future!",
+    "bio": "I am a software engineer. Not only do I like to program, but I am passionate about writing clean, smart, and efficient code! Over my schooling and work terms I have been exposed to many languages and frameworks, but some of my favourites are Javascript, C, Go, and Ruby. I recently started my dive into web development, more specifically using the ReactJS/NodeJS libraries. I hope to explore more full stack opportunities in the future!",
     "contactmessage": "Drop me a line:",
     "email": "me@alexmontague.ca",
     "phone": "",
+    "address": {
+      "street": "",
+      "city": "Toronto",
+      "state": "Ontario",
+      "zip": ""
+    },
     "website": "https://www.alexmontague.ca",
-    "resumedownload": "https://drive.google.com/file/d/1rP0VvccUZPj4K478CcTFH_Mpl9jZ-5nq/view?usp=sharing",
+    "resumedownload": "https://drive.google.com/open?id=1V4JzX-GK8upqpSdcKO8DLT38PV5Yt6Q0",
     "social": [
       {
         "name": "linkedin",
         "url": "https://www.linkedin.com/in/alex-montague/",
-        "className": "fa fa-linkedin"
+        "className": "fab fa-linkedin"
       },
       {
         "name": "github",
         "url": "https://github.com/alexanderMontague",
-        "className": "fa fa-github"
+        "className": "fab fa-github"
       },
       {
         "name": "stack overflow",
         "url": "https://stackoverflow.com/users/4372747/alex-montague",
-        "className": "fa fa-stack-overflow"
+        "className": "fab fa-stack-overflow"
       },
       {
         "name": "youtube",
         "url": "https://www.youtube.com/channel/UCHhHNZJcWDu5kH3FIPWwHEA",
-        "className": "fa fa-youtube"
+        "className": "fab fa-youtube"
+      },
+      {
+        "name": "resume",
+        "url": "https://drive.google.com/open?id=1V4JzX-GK8upqpSdcKO8DLT38PV5Yt6Q0",
+        "className": "fas fa-scroll"
       }
     ]
   },
@@ -38,10 +49,10 @@
     "skillmessage": "Some technology I am passionate about, and an overview of my skills",
     "education": [
       {
-        "school": "The University of Guelph",
-        "degree": "Bachelors of Computing",
+        "school": "University of Guelph",
+        "degree": "Software Engineering",
         "graduated": "Exp. April 2021",
-        "description": "Currently in my third year studying Software Engineering. Some of the most interesting/favourite courses I have taken so far have been Software Design I - IV, Data Structures, Algorithms, Operating Systems and the infamous 'Angel of Death' (Software Systems and Integrations). Currently on the Dean's List for maintaining an overall average of 80%. I am looking forward to my databases and software design V class.",
+        "description": "Currently in my fourth year studying Software Engineering. Some interesting and favourite courses I have taken so far have been Software Design I - IV, Data Structures, Algorithms, Operating Systems and the infamous 'Angel of Death' (Software Systems and Integrations). Currently on the Dean's List for maintaining an overall average of 80%. I am looking forward to my databases and quantum computing classes.",
         "icon": "guelph"
       },
       {
@@ -54,58 +65,98 @@
     ],
     "work": [
       {
-        "company": "League",
-        "title": "Full Stack Developer",
-        "years": "May 2019 - Present",
-        "description": "League is an all digital benefit providing platform that lets employees customize and tailor their benefits exactly how they want to. League was rated LinkedIn's 4th top startup in Canada, and I can really see why! I am currently working as a Full Stack developer writing ReactJS and Redux on the frontend, and Go on the backend which I absolutely love working with. I look forward to what comes in the coming months of this placement!",
+        "company": "Shopify",
+        "title": "Web Developer (Internship)",
+        "years": "May 2020 - August 2020",
+        "description": "Shopify lets entrepreneurs create an ecommerce website that helps find customers, drive sales, and manage your day-to-day. I joined the App Management team where I was working as a Web Developer, working with React & Typescript, as well as Ruby + Rails. We were responsible for making sure Partners (app developers or creators) had the smoothest experience possible with Shopify and our App Ecosystem.",
+        "icon": "shopify"
+      },
+      {
+        "company": "Taplytics",
+        "title": "Full Stack Developer (Internship)",
+        "years": "January 2020 - April 2020",
+        "description": "Taplytics provides companies a unique way to improve their marketing techniques. Utilizing A/B testing, Launch Control, and Push Notifications, clients can easily customize and create specific marketing journeys for different types of clients to experience. I am currently working with React/Redux for our web apps, Node/Express for our services, and Mongo, PSQL, Kafka and Redis for our data storage/transportation. Was a part of the delivery team, where I was able to uniquely impact our clients with journey features, end to end testing and new library implementation.",
+        "icon": "taplytics"
+      },
+      {
+        "company": "University of Guelph",
+        "title": "Teaching Assistant",
+        "years": "September 2019 - December 2019",
+        "description": "Helped facilitate CIS*1200 under Guelph’s School of Computer Science. Introductory course to computer hardware and software, data organization, problem-solving and programming. Responsibilities included marking of student’s online submissions (written and code assignments), as well as providing extra support during office hours.",
+        "icon": "guelph"
+      },
+      {
+        "company": "League Inc",
+        "title": "Full Stack Developer (Internship)",
+        "years": "May 2019 - August 2019",
+        "description": "League is an all digital health and wellness platform specializing in employer benefits. The app gives employees the ability to customize and choose their benefits to their needs, while letting employers easily manage and track their employees benefits, spending, and accounts. League was rated LinkedIn's 4th top startup in Canada, and it was a fantastic experience! I was working as a Full Stack developer writing ReactJS and Redux on the frontend, and Golang on the backend. My cohort of interns wrote a cool article about our time at League, check it out",
         "icon": "league"
       },
       {
         "company": "Coinsquare",
-        "title": "Student Web Developer ",
+        "title": "Student Web Developer (Internship)",
         "years": "May 2018 - December 2019",
         "description": "Coinsquare is a 21st century financial institution specializing in trading and managing cryptocurrencies. Coinsquare was rated the 2nd most sought after startup in Canada by LinkedIn! I joined the team as a student web developer and have been working on our web application for both the front end and backend teams. As one of Coinsquare's first interns, I had the pleasure of participating and presenting in the first ever Coinsquare hackathon, as well as being able to be a fully functioning and independent developer! This was an absolutely amazing placement and I have learned so much not just about web development, but also about blockchain technology, project management, leadership and communication in an agile team! Check out an article I wrote about my experiences ",
         "icon": "coinsquare"
       }
     ],
-    "techSkills": {
-      "row1": [
-        {
-          "imageSrc": "images/react.png",
-          "header": "ReactJS",
-          "text": "I have been doing a lot of frontend work with the react library, and I absolutely love it! It is so versatile and is my go to for frontend web development. Pairing React with some other very powerful libraries and frameworks that I like (redux, axios, styled components) makes for a super strong frontend stack!"
-        },
-        {
-          "imageSrc": "images/node.png",
-          "header": "NodeJS",
-          "text": "After recently branching out into backend web development, node, express and knex are some of the tools I am using to build my backend architecture. I am still learning lots about backend development!"
-        }
-      ],
-      "row2": [
-        {
-          "imageSrc": "images/c.png",
-          "header": "C",
-          "text": "The C Programming language is the main language taught at UofG, and probably my strongest language. I liked the low-levelness of this language, and my algorithms and data structures classes all utilized C. Learning this language made me appreciate dynamic languages, but also allowed me to understand how they work behind the scenes."
-        },
-        {
-          "imageSrc": "images/mysql.png",
-          "header": "SQL",
-          "text": "After learning SQL at school through projects, I was able use these skills at my current co-op where we utilized MySQL and PostgreSQL. I still have much to learn (and my upcoming databased course will help) in terms of relational databases, but I am also open and exploring non-relational databases such as MongoDB for personal use."
-        }
-      ],
-      "row3": [
-        {
-          "imageSrc": "images/java.png",
-          "header": "Java",
-          "text": "Java is my favourite OO language and I have been programming with Java since highschool. I made my first graphical application with Java while working at my previous job, check it out below!"
-        },
-        {
-          "imageSrc": "images/python.png",
-          "header": "Python",
-          "text": "Python is something I am still exploring/learning, but I am very interested in it as I would like to explore AI/Machine learning in the future. Not to mention no more curly braces and semicolons :)"
-        }
-      ]
-    },
+    "techSkills": [
+      {
+        "imageSrc": "public/images/tech/react.png",
+        "header": "ReactJS",
+        "text": "I have been doing a lot of frontend work with the react library, and I absolutely love it! It is so versatile and is my go to for frontend web development. Pairing React with some other very powerful libraries and frameworks that I like (redux, redux sagas, axios, styled components) makes for a super strong frontend stack!"
+      },
+      {
+        "imageSrc": "public/images/tech/typescript.png",
+        "header": "Typescript",
+        "text": "I have become very fond of using Typescript in web development, and I love strong typing. I don't think I will be using regular JS anytime soon anymore!"
+      },
+      {
+        "imageSrc": "public/images/tech/node.png",
+        "header": "NodeJS",
+        "text": "After recently branching out into backend web development, node, express and knex are some of the tools I am using to build my backend architecture. I enjoy writing Javascript, and this pairs well with a frontend Javascript framework."
+      },
+      {
+        "imageSrc": "public/images/tech/c.png",
+        "header": "C",
+        "text": "The C Programming language is the main language taught at UofG, and probably my strongest language. I liked the low-levelness of this language, and my algorithms and data structures classes all utilized C. Learning this language made me appreciate dynamic languages, but also allowed me to understand how they work behind the scenes."
+      },
+      {
+        "imageSrc": "public/images/tech/golang.png",
+        "header": "Golang",
+        "text": "I am currently also exploring Go development for fast backend services, as well as networking. I like the C feel the language gives, but with modern features and strict typing."
+      },
+      {
+        "imageSrc": "public/images/tech/ruby.png",
+        "header": "Ruby",
+        "text": "I have recently started working in Ruby/Rails, and I am enjoying the scriptyness of it so far!"
+      },
+      {
+        "imageSrc": "public/images/tech/mongo.png",
+        "header": "MongoDB",
+        "text": "Document based or non-relational databases are my go to for a quick and easy DB. I love the flexibility they provide and how easy they scale horizontally. I use Mongo for most of my personal projects."
+      },
+      {
+        "imageSrc": "public/images/tech/mysql.png",
+        "header": "SQL",
+        "text": "After learning SQL at school through projects, I was able use these skills at previous co-ops where we utilized MySQL and PostgreSQL. I still have much to learn (and my upcoming database course will help) in terms of relational databases, but I am also exploring the use of heavy queries for data science and data analysis."
+      },
+      {
+        "imageSrc": "public/images/tech/firebase.png",
+        "header": "Firebase",
+        "text": "After exploring the whole firebase ecosystem for a side project, I can say that I really enjoy using it. I utilized almost everything firebase had to offer including its firestore, cloud functions, storage buckets, authentication and hosting. I use firebase to quickly spin up a test DB, or for less extensive native or web apps."
+      },
+      {
+        "imageSrc": "public/images/tech/java.png",
+        "header": "Java",
+        "text": "Java is my favourite OO language and I have been programming with Java since highschool. I made my first graphical application with Java while working at my fist job, check it out below!"
+      },
+      {
+        "imageSrc": "public/images/tech/python.png",
+        "header": "Python",
+        "text": "Python is something I am still exploring/learning, but I am very interested in it as I would like to explore AI/Machine learning in the future. Not to mention no more curly braces and semicolons :)"
+      }
+    ],
     "barSkills": [
       {
         "name": "ReactJS/Redux",
@@ -120,16 +171,16 @@
         "level": "85%"
       },
       {
-        "name": "SQL",
+        "name": "Databases/SQL",
         "level": "75%"
       },
       {
         "name": "HTML5/CSS3",
-        "level": "90%"
+        "level": "95%"
       },
       {
         "name": "Data Structures / Algorithms",
-        "level": "75%"
+        "level": "70%"
       },
       {
         "name": "Agile Methodologies",
@@ -141,17 +192,17 @@
     "projects": [
       {
         "title": "Cryptowatch",
-        "category": "An all in one web application to track and manage your crypto assets. No real money needed, just select the coin, the amount, and date bought and it will do the rest for you. This has been my first real web app that is constantly being developed.",
+        "description": "An all in one web application to track and manage your crypto assets. No real money needed, just select the coin, the amount, and date bought and it will do the rest for you. This has been my first real web app that is constantly being developed.",
         "image": "cryptoWatch.png",
         "links": {
           "github": "https://github.com/alexanderMontague/CryptoWatch",
-          "hosted": "https://cryptowatch-d0d48.firebaseapp.com/"
+          "hosted": "https://cryptowatch.web.app/"
         },
         "tech": ["react", "node", "mongo"]
       },
       {
         "title": "Book Buy",
-        "category": "Book Buy offers students a simple way of finding, buying and selling their textbooks. Book Buy instantly connects buyers and sellers for used textbooks that help students save money, time and effort. Created with a partner at The University of Guelph.",
+        "description": "Book Buy offers students a simple way of finding, buying and selling their textbooks. Book Buy instantly connects buyers and sellers for used textbooks that help students save money, time and effort. Created with a partner at The University of Guelph.",
         "image": "BookBuyLanding.png",
         "links": {
           "github": "https://github.com/alexanderMontague/BookBuy",
@@ -161,17 +212,17 @@
       },
       {
         "title": "am.ca Server",
-        "category": "My personal server hosted on a raspberry pi that I use for alexmontague.ca. Try pinging [api.alexmontague.ca/resume] for a JSON representation of my resume! Written using Golang and configured using nginx. I used this as an opportunity to learn more about Go and Netoworking!",
-        "image": "amServer.png",
+        "description": "My personal server hosted on a raspberry pi that I use for alexmontague.ca. Try pinging <code><a href='http://api.alexmontague.ca/resume' target='_blank'>api.alexmontague.ca/resume</a></code> for a JSON representation of my resume! Written using Golang and configured using nginx. I used this as an opportunity to learn more about Go and Networking!",
+        "image": "pi_server.png",
         "links": {
           "github": "https://github.com/alexanderMontague/am.ca-server",
-          "hosted": "api.alexmontague.ca"
+          "hosted": "https://api.alexmontague.ca"
         },
-        "tech": ["go", "nginx", "raspberrypi"]
+        "tech": ["golang", "nginx", "pi"]
       },
       {
         "title": "BubbleT",
-        "category": "BubbleT is an app that collects and displays salary records from Canada's public sector high earners. BubbleT was a team project for System Analysis and Design in Applications (CIS*3750, Winter 2019).",
+        "description": "BubbleT is an app that collects and displays salary records from Canada's public sector high earners. BubbleT was a team project for System Analysis and Design in Applications (CIS*3750, Winter 2019).",
         "image": "bubbleT.png",
         "links": {
           "github": "https://github.com/alexanderMontague/bubbleT"
@@ -180,7 +231,7 @@
       },
       {
         "title": "Coinsquare Dashboard",
-        "category": "Dashboard application that was built in 4 hours for Coinsquare's first ever internal Hackathon. This dashboard allowed for constant monitoring of coinsquare's status, jira board, and Github PR data in a visualized way.",
+        "description": "Dashboard application that was built in 4 hours for Coinsquare's first ever internal Hackathon. This dashboard allowed for constant monitoring of coinsquare's status, jira board, and Github PR data in a visualized way.",
         "image": "CSDashboard.png",
         "links": {
           "github": "https://github.com/alexanderMontague/coinsquare-dashboard",
@@ -190,7 +241,7 @@
       },
       {
         "title": "Awesome Ancestors",
-        "category": "This program utilizes the GEDCOM file format (file format that reflects and displays ancestral data in a specific way. Used in sites like Ancestory.com), and was created for my 'Angel of Death' course. The program's main purpose is to read in a GEDCOM file, parse all information from the file, and manipulate the data to your liking. The program can create and edit new GEDCOM files, or modify existing files. The web client gives the user an interface to interact with and view the GEDCOM files.",
+        "description": "This program utilizes the GEDCOM file format (file format that reflects and displays ancestral data in a specific way. Used in sites like Ancestory.com), and was created for my 'Angel of Death' course. The program's main purpose is to read in a GEDCOM file, parse all information from the file, and manipulate the data to your liking. The program can create and edit new GEDCOM files, or modify existing files. The web client gives the user an interface to interact with and view the GEDCOM files.",
         "image": "awesomeAncestors.gif",
         "links": {
           "github": "https://github.com/alexanderMontague/Awesome-Ancestors"
@@ -199,7 +250,7 @@
       },
       {
         "title": "Greens Tracker",
-        "category": "This Java application was created to record and display data recorded during a hand watering shift at my previous Golf Course. This information was usually kept on paper and was an overall inefficient process I wanted to make better.",
+        "description": "This Java application was created to record and display data recorded during a hand watering shift at my previous Golf Course. This information was usually kept on paper and was an overall inefficient process I wanted to make better.",
         "image": "greensTracker.gif",
         "links": {
           "github": "https://github.com/alexanderMontague/GreensTracker"
