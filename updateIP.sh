@@ -16,10 +16,10 @@ domain="alexmontague.ca" # your domain
 name="api"               # name of A record to update
 key=$GODADDY_KEY         # key for godaddy developer API
 secret=$GODADDY_SECRET   # secret for godaddy developer API
+ttl="600"                # Time to Live min value 600
 
+# set headers and print meta data
 headers="Authorization: sso-key $key:$secret"
-
-# echo $headers
 echo [ `date +"%A, %b %d, %Y %I:%M %p"` ]
 
 result=$(curl -s -X GET -H "$headers" \
@@ -36,13 +36,15 @@ echo "currentIp:" $currentIp
 if [ "$dnsIp" != "$currentIp" ];
  then
 	#echo "Ips are not equal"
-	request='{"data":"'$currentIp'","ttl":3600}'
+	request='[{"data":"'$currentIp'","ttl":3600}]'
 	# echo $request
 	nresult=$(curl -i -s -X PUT \
- -H "$headers" \
- -H "Content-Type: application/json" \
- -d $request "https://api.godaddy.com/v1/domains/$domain/records/A/$name")
+		-H "$headers" \
+ 		-H "Content-Type: application/json" \
+ 		-d $request "https://api.godaddy.com/v1/domains/$domain/records/A/$name")
 	echo "Updated GoDaddy DNS"
+	echo "Result:"
+	echo $nresult
 fi
 
 printf "\n"
