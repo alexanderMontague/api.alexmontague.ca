@@ -2,17 +2,18 @@ package main
 
 import (
 	"am.ca-server/controllers"
+	"am.ca-server/data"
 	"am.ca-server/middleware"
 	"fmt"
+	"github.com/friendsofgo/graphiql"
 	"github.com/gorilla/mux"
-	"github.com/joho/godotenv"
 	"github.com/rs/cors"
 	"log"
 	"net/http"
 )
 
 const (
-	// PORT : port that server is hosted under
+	// PORT - port server is using
 	PORT = ":8088"
 )
 
@@ -21,24 +22,28 @@ func handleRequests() {
 
 	router.Use(middleware.LoggingMiddleware)
 
+	// GraphiQL
+	graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
+	if err != nil {
+		fmt.Println("Error setting up GraphiQL %s", err)
+	}
+
+	// Routes
 	router.HandleFunc("/", controllers.BaseURL).Methods("GET")
 	router.HandleFunc("/email", controllers.EmailService).Methods("POST")
 	router.HandleFunc("/resume", controllers.ResumeJSON).Methods("GET")
+	router.HandleFunc("/graphql", controllers.GraphQL).Methods("POST")
+	router.Handle("/graphiql", graphiqlHandler).Methods("GET")
 
 	// CORS middleware
 	handler := cors.Default().Handler(router)
 
+	// Start Server
 	log.Fatal(http.ListenAndServe(PORT, handler))
 }
-
 func main() {
 	fmt.Println("Running server on port", PORT)
 
-	// load dotenv variables
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-
+	data.SeedData()
 	handleRequests()
 }

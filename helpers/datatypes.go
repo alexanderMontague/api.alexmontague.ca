@@ -16,3 +16,27 @@ type Email struct {
 	Message   string `json:"message"`
 	FromEmail string `json:"fromEmail"`
 }
+
+// GQLQuery : format of a GQL request
+type GQLQuery struct {
+	OperationName string                 `json:"operationName"`
+	Query         string                 `json:"query"`
+	Variables     map[string]interface{} `json:"variables"`
+}
+
+// Book : GQL Book Type
+type Book struct {
+	ID       int64  `json:"id"`
+	Title    string `json:"title"`
+	ISBN     string `json:"isbn"`
+	AuthorID int64  `json:"authorID"`
+	Author   Author `json:"author"`
+}
+
+// Author : GQL Author Type
+type Author struct {
+	ID          int64  `json:"id"`
+	Name        string `json:"name"`
+	DateOfBirth string `json:"dateOfBirth"`
+	Books       []Book `json:"books"`
+}
