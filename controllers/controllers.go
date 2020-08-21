@@ -1,10 +1,12 @@
 package controllers
 
 import (
+	"am.ca-server/graphql"
 	"am.ca-server/helpers"
 	"context"
 	"encoding/json"
 	"fmt"
+	GQL "github.com/graphql-go/graphql"
 	"github.com/mailgun/mailgun-go"
 	"io/ioutil"
 	"net/http"
@@ -13,7 +15,7 @@ import (
 	"time"
 )
 
-// BaseURL Route
+// BaseURL Controller
 // Route : '/'
 // Type  : 'GET'
 func BaseURL(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +25,7 @@ func BaseURL(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 404, Message: "Invalid Route"})
 }
 
-// EmailService Route
+// EmailService Controller
 // Route : '/email
 // Type  : 'POST'
 func EmailService(w http.ResponseWriter, r *http.Request) {
@@ -57,7 +59,7 @@ func EmailService(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(helpers.Response{Error: false, Code: 200, Message: "Email Received"})
 }
 
-// ResumeJSON Route
+// ResumeJSON Controller
 // Route : '/resume
 // Type  : 'GET'
 func ResumeJSON(w http.ResponseWriter, r *http.Request) {
@@ -84,4 +86,32 @@ func ResumeJSON(w http.ResponseWriter, r *http.Request) {
 	var result map[string]interface{}
 	json.Unmarshal([]byte(byteValue), &result)
 	json.NewEncoder(w).Encode(result)
+}
+
+// GraphQL Controller
+// Route : '/graphql
+// Type  : 'POST'
+func GraphQL(w http.ResponseWriter, r *http.Request) {
+	// Set headers
+	w.Header().Set("content-type", "application/json")
+
+	// Read request query
+	var request helpers.GQLQuery
+	json.NewDecoder(r.Body).Decode(&request)
+
+	fmt.Println("QUERY", request.Query)
+
+	params := GQL.Params{
+		Schema:         graphql.GetSchema(),
+		OperationName:  request.OperationName,
+		RequestString:  request.Query,
+		VariableValues: request.Variables,
+	}
+	resolvedValue := GQL.Do(params)
+	if len(resolvedValue.Errors) > 0 {
+		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: fmt.Sprintf("%s", resolvedValue.Errors)})
+		return
+	}
+
+	json.NewEncoder(w).Encode(resolvedValue)
 }
