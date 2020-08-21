@@ -59,7 +59,7 @@ var queryType = GQL.NewObject(
 			"hello": &GQL.Field{
 				Type:        GQL.String,
 				Description: "Hello World!",
-				Resolve: func(p GQL.ResolveParams) (interface{}, error) {
+				Resolve: func(params GQL.ResolveParams) (interface{}, error) {
 					return "world", nil
 				},
 			},
@@ -73,8 +73,8 @@ var queryType = GQL.NewObject(
 						Type: GQL.Int,
 					},
 				},
-				Resolve: func(p GQL.ResolveParams) (interface{}, error) {
-					id, ok := p.Args["id"].(int)
+				Resolve: func(params GQL.ResolveParams) (interface{}, error) {
+					id, ok := params.Args["id"].(int)
 					if !ok {
 						return nil, errors.New("error getting book argument")
 					}
@@ -97,8 +97,8 @@ var queryType = GQL.NewObject(
 						Type: GQL.Int,
 					},
 				},
-				Resolve: func(p GQL.ResolveParams) (interface{}, error) {
-					id, ok := p.Args["id"].(int)
+				Resolve: func(params GQL.ResolveParams) (interface{}, error) {
+					id, ok := params.Args["id"].(int)
 					if !ok {
 						return nil, errors.New("error getting author argument")
 					}
@@ -196,6 +196,54 @@ var mutationType = GQL.NewObject(GQL.ObjectConfig{
 
 				data.AddAuthor(author)
 				return author, nil
+			},
+		},
+
+		// remove book from DB
+		"removeBook": &GQL.Field{
+			Type:        GQL.String,
+			Description: "Remove a book given an id",
+			Args: GQL.FieldConfigArgument{
+				"id": &GQL.ArgumentConfig{
+					Type: GQL.NewNonNull(GQL.Int),
+				},
+			},
+			Resolve: func(params GQL.ResolveParams) (interface{}, error) {
+				id, ok := params.Args["id"].(int)
+				if !ok {
+					return nil, errors.New("error getting book id")
+				}
+
+				err := data.RemoveBook(int64(id))
+				if err != nil {
+					return nil, err
+				}
+
+				return "Successfully removed Book", nil
+			},
+		},
+
+		// remove author from DB
+		"removeAuthor": &GQL.Field{
+			Type:        GQL.String,
+			Description: "Remove an author given an id",
+			Args: GQL.FieldConfigArgument{
+				"id": &GQL.ArgumentConfig{
+					Type: GQL.NewNonNull(GQL.Int),
+				},
+			},
+			Resolve: func(params GQL.ResolveParams) (interface{}, error) {
+				id, ok := params.Args["id"].(int)
+				if !ok {
+					return nil, errors.New("error getting author id")
+				}
+
+				err := data.RemoveAuthor(int64(id))
+				if err != nil {
+					return nil, err
+				}
+
+				return "Successfully removed Book", nil
 			},
 		},
 	},

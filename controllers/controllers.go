@@ -99,7 +99,7 @@ func GraphQL(w http.ResponseWriter, r *http.Request) {
 	var request helpers.GQLQuery
 	json.NewDecoder(r.Body).Decode(&request)
 
-	fmt.Println("QUERY", request.Query)
+	fmt.Println("QUERY -", request.Query)
 
 	params := GQL.Params{
 		Schema:         graphql.GetSchema(),
