@@ -171,7 +171,7 @@ var mutationType = GQL.NewObject(GQL.ObjectConfig{
 
 		// add author to DB
 		"addAuthor": &GQL.Field{
-			Type:        bookType,
+			Type:        authorType,
 			Description: "Create a new Author",
 			Args: GQL.FieldConfigArgument{
 				"name": &GQL.ArgumentConfig{
