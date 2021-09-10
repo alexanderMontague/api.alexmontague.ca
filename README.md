@@ -1,4 +1,4 @@
-<h1>🖥&nbsp;&nbsp;am.ca-server&nbsp;&nbsp;📬</h1>
+<h1>🖥&nbsp;&nbsp;api.alexmontague.ca&nbsp;&nbsp;📬</h1>
 <i>My personal server that I use for www.alexmontague.ca</i>
 
 ![](https://i.imgur.com/Xn3AuBS.jpg)
@@ -48,9 +48,9 @@ Replace `<PORT>` with the local port your server is running on. In my case it is
 
 ### Running the Cronjob
 _I also use a shell script to update my api domain record, as it is hosted through my dynamic home external ip. Here is how you set that up!_
-* *Note: This implementation is for GoDaddy Domains. If your domain provider has an API, you would need to make a few changes*  
+* *Note: This implementation is for GoDaddy Domains. If your domain provider has an API, you would need to make a few changes*
 1) Create a GoDaddy API Key
 2) Store the credentials in `/etc/environment` as `GODADDY_KEY` and `GODADDY_SECRET` respectfully so the cron can access these environment vars
-3) Set up the cron using `crontab -e` and adding the cron `*/10 * * * * ~/go/src/am.ca-server/updateIP.sh >> ~/Documents/cronAPI.log 2>&1`<br />
+3) Set up the cron using `crontab -e` and adding the cron `*/10 * * * * ~/go/src/api.alexmontague.ca/updateIP.sh >> ~/Documents/cronAPI.log 2>&1`<br />
 3.b) You do not need to redirect output if you do not want to log anything
 4) If you did set up logging and wish to stream it in another tmux window, use `tail -f ~/Documents/cronAPI.log`

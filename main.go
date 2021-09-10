@@ -1,9 +1,9 @@
 package main
 
 import (
-	"am.ca-server/controllers"
-	"am.ca-server/data"
-	"am.ca-server/middleware"
+	"api.alexmontague.ca/controllers"
+	"api.alexmontague.ca/data"
+	"api.alexmontague.ca/middleware"
 	"fmt"
 	"github.com/friendsofgo/graphiql"
 	"github.com/gorilla/mux"

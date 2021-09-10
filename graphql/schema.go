@@ -1,8 +1,8 @@
 package graphql
 
 import (
-	"am.ca-server/data"
-	"am.ca-server/helpers"
+	"api.alexmontague.ca/data"
+	"api.alexmontague.ca/helpers"
 	"errors"
 	// "fmt"
 	GQL "github.com/graphql-go/graphql"

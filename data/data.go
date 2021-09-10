@@ -1,7 +1,7 @@
 package data
 
 import (
-	"am.ca-server/helpers"
+	"api.alexmontague.ca/helpers"
 	"errors"
 )
 

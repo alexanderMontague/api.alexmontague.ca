@@ -1,8 +1,8 @@
 package controllers
 
 import (
-	"am.ca-server/graphql"
-	"am.ca-server/helpers"
+	"api.alexmontague.ca/graphql"
+	"api.alexmontague.ca/helpers"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -44,11 +44,11 @@ func EmailService(w http.ResponseWriter, r *http.Request) {
 	messageBody := fmt.Sprintf("Sent By: %s\n\nSender Email: %s\n\n%s\n", responseEmail.Sender, responseEmail.FromEmail, responseEmail.Message)
 	message := mg.NewMessage("info@bookbuy.ca", messageSubject, messageBody, responseEmail.ToEmail)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	_, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
 	// Send the message
-	resp, id, err := mg.Send(ctx, message)
+	resp, id, err := mg.Send(message)
 	if err != nil {
 		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 401, Message: "Something went wrong. Make sure you have all parameters!"})
 		fmt.Println(err.Error())
