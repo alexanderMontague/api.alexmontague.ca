@@ -10,6 +10,7 @@ import (
 	"github.com/rs/cors"
 	"log"
 	"net/http"
+	"github.com/joho/godotenv"
 )
 
 const (
@@ -34,6 +35,7 @@ func handleRequests() {
 	router.HandleFunc("/resume", controllers.ResumeJSON).Methods("GET")
 	router.HandleFunc("/graphql", controllers.GraphQL).Methods("POST")
 	router.Handle("/graphiql", graphiqlHandler).Methods("GET")
+	router.HandleFunc("/cors", controllers.CorsAnywhere).Methods("GET")
 
 	// CORS middleware
 	handler := cors.Default().Handler(router)
@@ -43,6 +45,12 @@ func handleRequests() {
 }
 func main() {
 	fmt.Println("Running server on port", PORT)
+
+	err := godotenv.Load(".env")
+
+  if err != nil {
+    fmt.Println("Error loading .env file")
+  }
 
 	data.SeedData()
 	handleRequests()

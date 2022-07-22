@@ -3,16 +3,14 @@ package controllers
 import (
 	"api.alexmontague.ca/graphql"
 	"api.alexmontague.ca/helpers"
-	"context"
 	"encoding/json"
 	"fmt"
 	GQL "github.com/graphql-go/graphql"
-	"github.com/mailgun/mailgun-go"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
+	"net/smtp"
 )
 
 // BaseURL Controller
@@ -36,25 +34,31 @@ func EmailService(w http.ResponseWriter, r *http.Request) {
 	// set headers
 	w.Header().Set("content-type", "application/json")
 
-	// Create an instance of the Mailgun Client
-	mg := mailgun.NewMailgun(os.Getenv("MAILGUN_DOMAIN"), os.Getenv("MAILGUN_API_KEY"))
+	// Configuration
+	from := "me@alexmontague.ca"
+	password := os.Getenv("ZOHO_EMAIL_SECRET")
+	to := []string{"business@alexmontague.ca"}
+	smtpHost := "smtp.zoho.com"
+	smtpPort := "587"
 
-	// Create and format mailgun email
 	messageSubject := fmt.Sprintf("[alexmontague.ca] - %s", responseEmail.Subject)
 	messageBody := fmt.Sprintf("Sent By: %s\n\nSender Email: %s\n\n%s\n", responseEmail.Sender, responseEmail.FromEmail, responseEmail.Message)
-	message := mg.NewMessage("info@bookbuy.ca", messageSubject, messageBody, responseEmail.ToEmail)
 
-	_, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
+	msg := []byte("To: " + to[0] + "\r\n" +
+		"Subject: " + messageSubject + "\r\n" +
+		"\r\n" +
+		messageBody + "\r\n")
 
-	// Send the message
-	resp, id, err := mg.Send(message)
+	// Create authentication
+	auth := smtp.PlainAuth("", from, password, smtpHost)
+
+	// Send actual message
+	err := smtp.SendMail(smtpHost+":"+smtpPort, auth, from, to, msg)
 	if err != nil {
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 401, Message: "Something went wrong. Make sure you have all parameters!"})
-		fmt.Println(err.Error())
+		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 401, Message: "Something went wrong sending the email."})
+		fmt.Println(err)
 		return
 	}
-	fmt.Printf("ID: %s Resp: %s\n", id, resp)
 
 	json.NewEncoder(w).Encode(helpers.Response{Error: false, Code: 200, Message: "Email Received"})
 }
@@ -114,4 +118,39 @@ func GraphQL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	json.NewEncoder(w).Encode(resolvedValue)
+}
+
+// CorsAnywhere Controller
+// Route : '/cors
+// Type  : 'GET'
+// Description : Proxies requests appended to the route to bypass CORS issues
+func CorsAnywhere(w http.ResponseWriter, r *http.Request) {
+	// set headers
+	w.Header().Set("content-type", "application/json")
+
+	// grab url to proxy
+	url := r.URL.Query().Get("url")
+
+	if url == "" {
+		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: "A URL was not specified"})
+		return
+	}
+
+	resp, err := http.Get(url)
+	if err != nil {
+		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: "Something went wrong with the request"})
+		fmt.Println(err.Error())
+		return
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: "Something went wrong parsing the request"})
+		fmt.Println(err.Error())
+	}
+
+	// return proxied request body
+	var result map[string]interface{}
+	json.Unmarshal([]byte(body), &result)
+	json.NewEncoder(w).Encode(result)
 }
