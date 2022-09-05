@@ -1,11 +1,11 @@
 {
   "main": {
     "name": "Alex Montague",
-    "occupation": "Software Engineering Student ",
+    "occupation": "Software Engineer",
     "description": "I am always looking for ",
-    "description2": ", whether that be open source projects, internships, or new technologies, ",
+    "description2": ". If you'd like to chat, drop me a line!",
     "image": "profilepic.jpg",
-    "bio": "I am a software engineer. Not only do I like to program, but I am passionate about writing clean, smart, and efficient code! Over my schooling and work terms I have been exposed to many languages and frameworks, but some of my favourites are Javascript, C, Go, and Ruby. I recently started my dive into web development, more specifically using the ReactJS/NodeJS libraries. I hope to explore more full stack opportunities in the future!",
+    "bio": "I'm currently based in beautiful Toronto, Ontario, Canada where I probably code a little too much. When I'm not working my day job, I can be found jamming on Web3 projects, hitting the Gym, or hanging out in Trinity Bellwoods Park! I have a recent passion for developing and learning about the Web3/Crypto/DeFi space. I have been a Crypto investor for 5+ years, but never had the opportunity to build software on these platforms. So lets go!",
     "contactmessage": "Drop me a line:",
     "email": "me@alexmontague.ca",
     "phone": "",
@@ -51,19 +51,26 @@
       {
         "school": "University of Guelph",
         "degree": "Software Engineering",
-        "graduated": "Exp. April 2021",
-        "description": "Currently in my fourth year studying Software Engineering. Some interesting and favourite courses I have taken so far have been Software Design I - IV, Data Structures, Algorithms, Operating Systems and the infamous 'Angel of Death' (Software Systems and Integrations). Currently on the Dean's List for maintaining an overall average of 80%. I am looking forward to my databases and quantum computing classes.",
+        "graduated": "April 2021",
+        "description": "Graduated with a Bachelor of Computing Degree with Distinction, Majoring in Software Engineering. Maintained a 4.0 GPA in my last 4 years. Participated and lead multiple hack-a-thons, Teaching Assistant for CIS*1200, and founded a startup called BookBuy.ca during my tenure at UofG.",
         "icon": "guelph"
-      },
-      {
-        "school": "Holy Trinity C.S.S",
-        "degree": "O.S.S.D - Ontario Scholar",
-        "graduated": "June 2016",
-        "description": "Highschool is where I was first introduced to programming and computer science. I started learning the fundamentals using the Turing and Java programming languages. I graduated as an Ontario Scholar and maintained an overall average of 95% in all CIS courses.",
-        "icon": "ht"
       }
     ],
     "work": [
+      {
+        "company": "Shopify",
+        "title": "Front End Developer",
+        "years": "May 2021 - Present",
+        "description": "Currently an L5 Engineer at Shopify on the App Configuration team. We are building products to enable the next generation of app developers on Shopify, so all of the tools, APIs and Web Interfaces a third party developer would need to build a kick-ass app on Shopify is what our team deals with. Currently Leading multiple projects inside of our team, including overhauling the ERB Apps Navigation on the Partners Platform, Reactification and extensibility of components on the Partners Platform, and leading project specific rituals including Planning, Grooming and Task identification/assignment.",
+        "icon": "shopify"
+      },
+      {
+        "company": "Keys Token",
+        "title": "Lead Engineer",
+        "years": "Nov 2021 - Present",
+        "description": "Was the first primary Engineer on the Keys Token Engineering team. Helped build out the infrastructure for one of the most disruptive Web3 Luxury and Virtual Real-estate companies in the space today. Built multiple Dapps, Landing Pages, and APIs for Keys Token. Generated $10 Million+ USD from MetaMansions NFT mint event. Keys Token, Meta Mansions, and Project Mercury are all Keys Token products that I have systematically helped engineer and build from the ground up with proprietary Smart Contracts, Authentication systems, and Web2 --> Web3 solutions.",
+        "icon": "keys"
+      },
       {
         "company": "Shopify",
         "title": "Web Developer (Internship)",
@@ -159,15 +166,15 @@
     ],
     "barSkills": [
       {
-        "name": "ReactJS/Redux",
-        "level": "90%"
+        "name": "ReactJS/Typescript/Redux",
+        "level": "95%"
       },
       {
         "name": "Git",
         "level": "80%"
       },
       {
-        "name": "NodeJS/Express",
+        "name": "NodeJS/Koa/Express",
         "level": "85%"
       },
       {
@@ -191,67 +198,59 @@
   "portfolio": {
     "projects": [
       {
+        "title": "Meta Mansions",
+        "description": "Luxury NFT collection of 8,888 unique digital mansions built on Ethereum. Marketing landing page and Web3 Mint Page supporting over 10k concurrent requests. Raised $10.8 Million USD on Mint. Built with vanilla HTML, SCSS, and TS to keep things lightweight. Check out the <a href='https://opensea.io/collection/metamansionsbykeys' target='_blank'>Opensea page</a> for more info! ",
+        "asset": "https://www.alexmontague.ca/public/images/portfolio/metamansions.mov",
+        "links": {
+          "github": "https://github.com/Keys-Token",
+          "hosted": "https://www.metamansionsbykeys.com"
+        },
+        "tech": ["typescript", "scss", "node", "psql"]
+      },
+      {
+        "title": "Keys Token",
+        "description": "The hub for Keys Token. Includes marketing landing pages, active analytics and email captures, client to server encryption for public routes, and a Web3 Keys Dashboard that a user authenticates with their wallet to see statistics and metrics based on their personal holdings.",
+        "asset": "https://www.alexmontague.ca/public/images/portfolio/keystoken.io.mov",
+        "links": {
+          "github": "https://github.com/Keys-Token",
+          "hosted": "https://www.keystoken.io"
+        },
+        "tech": ["typescript", "react", "redux", "node", "psql", "nginx"]
+      },
+      {
         "title": "Cryptowatch",
         "description": "An all in one web application to track and manage your crypto assets. No real money needed, just select the coin, the amount, and date bought and it will do the rest for you. This has been my first real web app that is constantly being developed.",
-        "image": "cryptoWatch.png",
+        "asset": "https://www.alexmontague.ca/public/images/portfolio/cryptoWatch.png",
         "links": {
           "github": "https://github.com/alexanderMontague/CryptoWatch",
           "hosted": "https://cryptowatch.web.app/"
         },
-        "tech": ["react", "node", "mongo"]
+        "tech": ["react", "redux", "node", "mongo"]
       },
       {
         "title": "Book Buy",
         "description": "Book Buy offers students a simple way of finding, buying and selling their textbooks. Book Buy instantly connects buyers and sellers for used textbooks that help students save money, time and effort. Created with a partner at The University of Guelph.",
-        "image": "BookBuyLanding.png",
+        "asset": "https://www.alexmontague.ca/public/images/portfolio/BookBuyLanding.png",
         "links": {
           "github": "https://github.com/alexanderMontague/BookBuy",
           "hosted": "https://www.bookbuy.ca/"
         },
-        "tech": ["react", "firebase"]
+        "tech": ["react", "javascript", "firebase"]
       },
       {
-        "title": "am.ca Server",
-        "description": "My personal server hosted on a raspberry pi that I use for alexmontague.ca. Try pinging <code><a href='http://api.alexmontague.ca/resume' target='_blank'>api.alexmontague.ca/resume</a></code> for a JSON representation of my resume! Written using Golang and configured using nginx. I used this as an opportunity to learn more about Go and Networking!",
-        "image": "pi_server.png",
+        "title": "api.alexmontague.ca",
+        "description": "My personal server hosted on a raspberry pi that I use for alexmontague.ca. Try pinging <code><a href='https://api.alexmontague.ca/resume' target='_blank'>api.alexmontague.ca/resume</a></code> for a JSON representation of my resume! Written using Golang and configured using nginx. I used this as an opportunity to learn more about Go and Networking!",
+        "asset": "https://www.alexmontague.ca/public/images/portfolio/pi_server.png",
         "links": {
-          "github": "https://github.com/alexanderMontague/api.alexmontague.ca",
+          "github": "https://github.com/alexanderMontague/am.ca-server",
           "hosted": "https://api.alexmontague.ca"
         },
         "tech": ["golang", "nginx", "pi"]
       },
       {
-        "title": "BubbleT",
-        "description": "BubbleT is an app that collects and displays salary records from Canada's public sector high earners. BubbleT was a team project for System Analysis and Design in Applications (CIS*3750, Winter 2019).",
-        "image": "bubbleT.png",
-        "links": {
-          "github": "https://github.com/alexanderMontague/bubbleT"
-        },
-        "tech": ["javascript", "node"]
-      },
-      {
-        "title": "Coinsquare Dashboard",
-        "description": "Dashboard application that was built in 4 hours for Coinsquare's first ever internal Hackathon. This dashboard allowed for constant monitoring of coinsquare's status, jira board, and Github PR data in a visualized way.",
-        "image": "CSDashboard.png",
-        "links": {
-          "github": "https://github.com/alexanderMontague/coinsquare-dashboard",
-          "hosted": "https://alexandermontague.github.io/coinsquare-dashboard/"
-        },
-        "tech": ["react"]
-      },
-      {
-        "title": "Awesome Ancestors",
-        "description": "This program utilizes the GEDCOM file format (file format that reflects and displays ancestral data in a specific way. Used in sites like Ancestory.com), and was created for my 'Angel of Death' course. The program's main purpose is to read in a GEDCOM file, parse all information from the file, and manipulate the data to your liking. The program can create and edit new GEDCOM files, or modify existing files. The web client gives the user an interface to interact with and view the GEDCOM files.",
-        "image": "awesomeAncestors.gif",
-        "links": {
-          "github": "https://github.com/alexanderMontague/Awesome-Ancestors"
-        },
-        "tech": ["c", "javascript", "mysql"]
-      },
-      {
         "title": "Greens Tracker",
         "description": "This Java application was created to record and display data recorded during a hand watering shift at my previous Golf Course. This information was usually kept on paper and was an overall inefficient process I wanted to make better.",
-        "image": "greensTracker.gif",
+        "asset": "https://www.alexmontague.ca/public/images/portfolio/greensTracker.gif",
         "links": {
           "github": "https://github.com/alexanderMontague/GreensTracker"
         },
