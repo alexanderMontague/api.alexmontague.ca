@@ -1,16 +1,17 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"net/http"
+
 	"api.alexmontague.ca/controllers"
 	"api.alexmontague.ca/data"
 	"api.alexmontague.ca/middleware"
-	"fmt"
 	"github.com/friendsofgo/graphiql"
 	"github.com/gorilla/mux"
-	"github.com/rs/cors"
-	"log"
-	"net/http"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 )
 
 const (
@@ -26,7 +27,7 @@ func handleRequests() {
 	// GraphiQL
 	graphiqlHandler, err := graphiql.NewGraphiqlHandler("/graphql")
 	if err != nil {
-		fmt.Println("Error setting up GraphiQL %s", err)
+		fmt.Printf("Error setting up GraphiQL %s", err)
 	}
 
 	// Routes
@@ -36,6 +37,7 @@ func handleRequests() {
 	router.HandleFunc("/graphql", controllers.GraphQL).Methods("POST")
 	router.Handle("/graphiql", graphiqlHandler).Methods("GET")
 	router.HandleFunc("/cors", controllers.CorsAnywhere).Methods("GET")
+	router.HandleFunc("/nhl/shots", controllers.GetPlayerShotStats).Methods("GET")
 
 	// CORS middleware
 	handler := cors.Default().Handler(router)
@@ -48,9 +50,9 @@ func main() {
 
 	err := godotenv.Load(".env")
 
-  if err != nil {
-    fmt.Println("Error loading .env file")
-  }
+	if err != nil {
+		fmt.Println("Error loading .env file")
+	}
 
 	data.SeedData()
 	handleRequests()
