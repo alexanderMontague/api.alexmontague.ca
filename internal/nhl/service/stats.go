@@ -13,19 +13,19 @@ import (
 	"api.alexmontague.ca/internal/nhl/repository"
 )
 
-func GetPlayerStats(gameId int, teamAbbrevs []string) ([]models.PlayerDetail, error) {
+func GetPlayerStats(gameId int, teamInfo []models.Team) ([]models.PlayerDetail, error) {
 	var allPlayers []models.PlayerDetail
 	playerChan := make(chan models.PlayerDetail, 50) // Buffered channel to prevent blocking
 	errorChan := make(chan error, 2)                 // Buffer for potential errors
 	var wg sync.WaitGroup
 
 	// Fetch rosters for both teams concurrently
-	for _, abbrev := range teamAbbrevs {
+	for _, team := range teamInfo {
 		wg.Add(1)
-		go func(teamAbbrev string) {
+		go func(team models.Team) {
 			defer wg.Done()
 
-			rosterURL := fmt.Sprintf("%s/roster/%s/current", models.NHL_API_BASE, teamAbbrev)
+			rosterURL := fmt.Sprintf("%s/roster/%s/current", models.NHL_API_BASE, team.Abbrev)
 			resp, err := repository.HTTPGetAndCount(rosterURL)
 			if err != nil {
 				errorChan <- err
@@ -49,7 +49,7 @@ func GetPlayerStats(gameId int, teamAbbrevs []string) ([]models.PlayerDetail, er
 				go func(p models.Player) {
 					defer playerWg.Done()
 
-					playerURL := fmt.Sprintf("%s/player/%d/landing", models.NHL_API_BASE, p.ID)
+					playerURL := fmt.Sprintf("%s/player/%d/landing", models.NHL_API_BASE, p.Id)
 					playerResp, err := repository.HTTPGetAndCount(playerURL)
 					if err != nil {
 						errorChan <- err
@@ -62,21 +62,23 @@ func GetPlayerStats(gameId int, teamAbbrevs []string) ([]models.PlayerDetail, er
 						errorChan <- err
 						return
 					}
-					if teamAbbrev == teamAbbrevs[0] {
-						playerDetail.OpposingTeamAbbrev = teamAbbrevs[1]
+					if team.Id == teamInfo[0].Id {
+						playerDetail.OpposingTeamId = teamInfo[1].Id
+						playerDetail.OpposingTeamAbbrev = teamInfo[1].Abbrev
 					} else {
-						playerDetail.OpposingTeamAbbrev = teamAbbrevs[0]
+						playerDetail.OpposingTeamId = teamInfo[0].Id
+						playerDetail.OpposingTeamAbbrev = teamInfo[0].Abbrev
 					}
 
 					select {
 					case playerChan <- playerDetail:
 					default:
-						fmt.Printf("Warning: Could not send player %d to channel\n", p.ID)
+						fmt.Printf("Warning: Could not send player %d to channel\n", p.Id)
 					}
 				}(player)
 			}
 			playerWg.Wait()
-		}(abbrev)
+		}(team)
 	}
 
 	// Wait in a separate goroutine and close channels when done
@@ -127,12 +129,17 @@ func calculateConfidence(avgShots, avgTOI float64, trend []int, position string)
 	return math.Round(score*100) / 100
 }
 
-// Helper function to get team stats by abbreviation
-func getTeamStatsByAbbrev(teamAbbrev string, allTeamStats []models.TeamStats) *models.TeamStats {
+func getLeagueShotAverage(allTeamStats []models.TeamStats) float64 {
+	var totalShots float64
 	for _, stats := range allTeamStats {
-		// Convert full name to abbreviation for comparison
-		// This is a simple example - you might need more robust mapping
-		if strings.Contains(stats.TeamFullName, teamAbbrev) {
+		totalShots += stats.ShotsForPerGame
+	}
+	return totalShots / float64(len(allTeamStats))
+}
+
+func getTeamStatsById(teamId int, allTeamStats []models.TeamStats) *models.TeamStats {
+	for _, stats := range allTeamStats {
+		if stats.TeamId == teamId {
 			return &stats
 		}
 	}
@@ -145,8 +152,8 @@ func calculatePredictedShots(
 	seasonShotsPerGame float64,
 	teamStats []models.TeamStats,
 ) float64 {
-	currentTeam := getTeamStatsByAbbrev(playerStats.CurrentTeamAbbrev, teamStats)
-	opposingTeam := getTeamStatsByAbbrev(playerStats.OpposingTeamAbbrev, teamStats)
+	currentTeam := getTeamStatsById(playerStats.CurrentTeamId, teamStats)
+	opposingTeam := getTeamStatsById(playerStats.OpposingTeamId, teamStats)
 
 	if currentTeam == nil || opposingTeam == nil {
 		// Fallback to simple average if team stats aren't available
@@ -157,8 +164,9 @@ func calculatePredictedShots(
 	basePrediction := avgShotsLast5*0.6 + seasonShotsPerGame*0.4
 
 	// Team-based adjustments
-	teamOffenseFactor := currentTeam.ShotsForPerGame / 30.0 // 30 shots/game is roughly league average
-	teamMatchupFactor := opposingTeam.ShotsAgainstPerGame / 30.0
+	leagueShotAverage := getLeagueShotAverage(teamStats)
+	teamOffenseFactor := currentTeam.ShotsForPerGame / leagueShotAverage
+	teamMatchupFactor := opposingTeam.ShotsAgainstPerGame / leagueShotAverage
 
 	// Adjust prediction based on team factors
 	adjustedPrediction := basePrediction * teamOffenseFactor * teamMatchupFactor
@@ -182,9 +190,11 @@ func CalculateShootingStats(players []models.PlayerDetail, teamStats []models.Te
 
 		// Calculate last 5 games shots
 		var totalShots float64
+		var shotsLast5 []int
 		var shotTrend []int
 		for i, game := range player.Last5Games {
 			totalShots += float64(game.Shots)
+			shotsLast5 = append(shotsLast5, game.Shots)
 			if i >= 2 {
 				shotTrend = append(shotTrend, game.Shots)
 			}
@@ -212,18 +222,18 @@ func CalculateShootingStats(players []models.PlayerDetail, teamStats []models.Te
 
 		// Only include players meeting minimum shot threshold
 		if avgShotsLast5 >= models.MIN_SHOTS {
-			predictedShots := calculatePredictedShots(player, avgShotsLast5, seasonShotsPerGame, teamStats)
-
 			stats = append(stats, models.PlayerStats{
 				PlayerId:           player.PlayerId,
 				Name:               fmt.Sprintf("%s %s", player.FirstName.Default, player.LastName.Default),
 				Position:           player.Position,
-				Team:               player.CurrentTeamAbbrev,
+				TeamAbbrev:         player.CurrentTeamAbbrev,
+				TeamId:             player.CurrentTeamId,
+				ShotsLast5:         shotsLast5,
 				AvgShotsLast5:      avgShotsLast5,
 				ShotTrend:          shotTrend,
 				AvgTOI:             avgTOI,
 				SeasonShotsPerGame: seasonShotsPerGame,
-				PredictedGameShots: predictedShots,
+				PredictedGameShots: calculatePredictedShots(player, avgShotsLast5, seasonShotsPerGame, teamStats),
 				Confidence:         calculateConfidence(avgShotsLast5, avgTOI, shotTrend, player.Position),
 			})
 		}

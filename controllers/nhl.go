@@ -58,7 +58,7 @@ func GetPlayerShotStats(w http.ResponseWriter, r *http.Request) {
 
 	var allPlayers []models.PlayerStats
 	for _, game := range games {
-		players, err := service.GetPlayerStats(game.GameID, []string{game.AwayTeam.Abbrev, game.HomeTeam.Abbrev})
+		players, err := service.GetPlayerStats(game.GameID, []models.Team{game.AwayTeam, game.HomeTeam})
 		if err != nil {
 			fmt.Println("Error fetching player stats:", err)
 			continue
@@ -67,13 +67,24 @@ func GetPlayerShotStats(w http.ResponseWriter, r *http.Request) {
 		allPlayers = append(allPlayers, playerStats...)
 	}
 
-	response := models.ParlayResponse{
-		Date:    date,
-		Games:   games,
-		Players: allPlayers,
+	var gamesWithPlayers []struct {
+		models.Game
+		Players []models.PlayerStats `json:"players"`
+	}
+
+	for _, game := range games {
+		gamesWithPlayers = append(gamesWithPlayers, struct {
+			models.Game
+			Players []models.PlayerStats `json:"players"`
+		}{
+			Game: game,
+			Players: helpers.Filter(allPlayers, func(player models.PlayerStats) bool {
+				return player.TeamId == game.AwayTeam.Id || player.TeamId == game.HomeTeam.Id
+			}),
+		})
 	}
 
 	fmt.Printf("Total API requests made: %d\n", atomic.LoadUint64(&repository.RequestCount))
 
-	json.NewEncoder(w).Encode(response)
+	json.NewEncoder(w).Encode(gamesWithPlayers)
 }

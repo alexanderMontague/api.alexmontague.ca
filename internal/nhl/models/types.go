@@ -7,6 +7,7 @@ const MIN_SHOTS = 3
 type Team struct {
 	Abbrev string `json:"abbrev"`
 	Logo   string `json:"logo"`
+	Id     int    `json:"id"`
 }
 
 type Game struct {
@@ -21,7 +22,9 @@ type PlayerStats struct {
 	PlayerId           int     `json:"playerId"`
 	Name               string  `json:"name"`
 	Position           string  `json:"position"`
-	Team               string  `json:"team"`
+	TeamAbbrev         string  `json:"teamAbbrev"`
+	TeamId             int     `json:"teamId"`
+	ShotsLast5         []int   `json:"shotsLast5"`
 	AvgShotsLast5      float64 `json:"avgShotsLast5"`
 	ShotTrend          []int   `json:"shotTrend"`
 	AvgTOI             float64 `json:"avgTOI"`
@@ -56,10 +59,12 @@ type TeamStats struct {
 	WinsInShootout      int     `json:"winsInShootout"`
 }
 
-type ParlayResponse struct {
-	Date    string        `json:"date"`
-	Games   []Game        `json:"games"`
-	Players []PlayerStats `json:"players"`
+type ShotResponse struct {
+	Date  string `json:"date"`
+	Games []struct {
+		Game
+		Players []PlayerStats `json:"players"`
+	} `json:"games"`
 }
 
 type NameField struct {
@@ -67,7 +72,7 @@ type NameField struct {
 }
 
 type Player struct {
-	ID        int       `json:"id"`
+	Id        int       `json:"id"`
 	FirstName NameField `json:"firstName"`
 	LastName  NameField `json:"lastName"`
 	Position  string    `json:"positionCode"`
@@ -87,7 +92,9 @@ type PlayerDetail struct {
 		Default string `json:"default"`
 	} `json:"lastName"`
 	Position           string `json:"position"`
+	CurrentTeamId      int    `json:"currentTeamId"`
 	CurrentTeamAbbrev  string `json:"currentTeamAbbrev"`
+	OpposingTeamId     int    `json:"opposingTeamId"`
 	OpposingTeamAbbrev string `json:"opposingTeamAbbrev"`
 	FeaturedStats      struct {
 		RegularSeason struct {
