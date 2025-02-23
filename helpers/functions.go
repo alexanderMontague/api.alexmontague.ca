@@ -9,3 +9,11 @@ func Filter[T any](slice []T, f func(T) bool) []T {
 	}
 	return filtered
 }
+
+func Map[T any, R any](ts []T, fn func(T) R) []R {
+	res := make([]R, len(ts))
+	for i, t := range ts {
+		res[i] = fn(t)
+	}
+	return res
+}

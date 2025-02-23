@@ -81,3 +81,5 @@ func GetAllTeamStats(season string) ([]models.TeamStats, error) {
 
 	return teamStatsResponse.Data, nil
 }
+
+// func GetCurrentSchedule()

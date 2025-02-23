@@ -108,25 +108,35 @@ func GetPlayerStats(gameId int, teamInfo []models.Team) ([]models.PlayerDetail, 
 func calculateConfidence(avgShots, avgTOI float64, trend []int, position string) float64 {
 	score := 0.0
 
-	// Weight recent shot volume
-	score += avgShots * 2
+	// Shot volume weight (0-5 points)
+	score += math.Min(avgShots/2, 5.0)
 
-	// Weight recent trend
+	// Recent trend analysis (0-3 points)
 	if len(trend) >= 3 {
-		if trend[2] >= trend[1] && trend[1] >= trend[0] {
-			score += 2
+		// Increasing trend
+		if trend[2] > trend[1] && trend[1] > trend[0] {
+			score += 3
+		} else if trend[2] > trend[0] { // Generally improving
+			score += 1.5
 		}
+
+		// Consistency factor
+		variance := calculateVariance(trend)
+		score += math.Max(0, 2-variance) // Lower variance = higher score
 	}
 
-	// Ice time correlation
-	score += (avgTOI / 20.0) * 1.5
+	// Ice time weight (0-4 points)
+	score += (avgTOI / 20.0) * 4
 
 	// Position adjustment
 	if position == "D" {
-		score *= 0.8
+		score *= 0.85
 	}
 
-	return math.Round(score*100) / 100
+	// Normalize to 0-100 scale
+	normalizedScore := (score / 12.0) * 100
+
+	return math.Round(math.Min(normalizedScore, 100)*100) / 100
 }
 
 func getLeagueShotAverage(allTeamStats []models.TeamStats) float64 {
@@ -156,27 +166,38 @@ func calculatePredictedShots(
 	opposingTeam := getTeamStatsById(playerStats.OpposingTeamId, teamStats)
 
 	if currentTeam == nil || opposingTeam == nil {
-		// Fallback to simple average if team stats aren't available
 		return (avgShotsLast5 + seasonShotsPerGame) / 2
 	}
 
-	// Base prediction on recent performance
-	basePrediction := avgShotsLast5*0.6 + seasonShotsPerGame*0.4
+	// Weight recent performance more heavily
+	basePrediction := avgShotsLast5*0.7 + seasonShotsPerGame*0.3
 
-	// Team-based adjustments
+	// Team pace factors
 	leagueShotAverage := getLeagueShotAverage(teamStats)
-	teamOffenseFactor := currentTeam.ShotsForPerGame / leagueShotAverage
-	teamMatchupFactor := opposingTeam.ShotsAgainstPerGame / leagueShotAverage
+	gamePaceFactor := (currentTeam.ShotsForPerGame + opposingTeam.ShotsAgainstPerGame) / (2 * leagueShotAverage)
 
-	// Adjust prediction based on team factors
-	adjustedPrediction := basePrediction * teamOffenseFactor * teamMatchupFactor
+	// Team strength adjustments
+	teamOffenseFactor := math.Pow(currentTeam.ShotsForPerGame/leagueShotAverage, 0.8)
+	teamDefenseFactor := math.Pow(opposingTeam.ShotsAgainstPerGame/leagueShotAverage, 0.6)
 
-	// Position-based scaling
+	// Position-based adjustment
+	positionFactor := 1.0
 	if playerStats.Position == "D" {
-		adjustedPrediction *= 0.7 // Defenders typically shoot less
+		positionFactor = 0.75
 	}
 
-	// Round to 1 decimal place
+	// Calculate ice time factor (assuming 20 mins is max TOI)
+	avgTOIMinutes := calculateAvgTOIMinutes(playerStats.Last5Games)
+	icetimeFactor := math.Min(avgTOIMinutes/20.0, 1.0)
+
+	// Combine all factors
+	adjustedPrediction := basePrediction *
+		gamePaceFactor *
+		teamOffenseFactor *
+		teamDefenseFactor *
+		positionFactor *
+		icetimeFactor
+
 	return math.Round(adjustedPrediction*10) / 10
 }
 
@@ -245,4 +266,45 @@ func CalculateShootingStats(players []models.PlayerDetail, teamStats []models.Te
 	})
 
 	return stats
+}
+
+// Helper functions
+func calculateAvgTOIMinutes(games []models.Last5Game) float64 {
+	var totalMinutes float64
+	for _, game := range games {
+		minutes := parseTimeOnIce(game.TOI)
+		totalMinutes += minutes
+	}
+	return totalMinutes / float64(len(games))
+}
+
+func parseTimeOnIce(toi string) float64 {
+	parts := strings.Split(toi, ":")
+	if len(parts) != 2 {
+		return 0
+	}
+	minutes, _ := strconv.ParseFloat(parts[0], 64)
+	seconds, _ := strconv.ParseFloat(parts[1], 64)
+	return minutes + seconds/60
+}
+
+func calculateVariance(numbers []int) float64 {
+	var sum float64
+	var mean float64
+
+	// Calculate mean
+	for _, num := range numbers {
+		sum += float64(num)
+	}
+	mean = sum / float64(len(numbers))
+
+	// Calculate variance
+	var variance float64
+	for _, num := range numbers {
+		diff := float64(num) - mean
+		variance += diff * diff
+	}
+	variance = variance / float64(len(numbers))
+
+	return variance
 }

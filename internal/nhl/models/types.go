@@ -83,6 +83,11 @@ type RosterResponse struct {
 	Defensemen []Player `json:"defensemen"`
 }
 
+type Last5Game struct {
+	Shots int    `json:"shots"`
+	TOI   string `json:"toi"`
+}
+
 type PlayerDetail struct {
 	PlayerId  int `json:"playerId"`
 	FirstName struct {
@@ -104,8 +109,5 @@ type PlayerDetail struct {
 			} `json:"subSeason"`
 		} `json:"regularSeason"`
 	} `json:"featuredStats"`
-	Last5Games []struct {
-		Shots int    `json:"shots"`
-		TOI   string `json:"toi"`
-	} `json:"last5Games"`
+	Last5Games []Last5Game `json:"last5Games"`
 }
