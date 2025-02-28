@@ -11,11 +11,12 @@ type Team struct {
 }
 
 type Game struct {
-	GameID   int    `json:"gameId"`
-	Title    string `json:"title"`
-	AwayTeam Team   `json:"awayTeam"`
-	HomeTeam Team   `json:"homeTeam"`
-	Season   string `json:"season"`
+	GameID       int    `json:"gameId"`
+	Title        string `json:"title"`
+	AwayTeam     Team   `json:"awayTeam"`
+	HomeTeam     Team   `json:"homeTeam"`
+	Season       string `json:"season"`
+	StartTimeUTC string `json:"startTimeUTC"`
 }
 
 type PlayerStats struct {
@@ -29,8 +30,9 @@ type PlayerStats struct {
 	ShotTrend          []int   `json:"shotTrend"`
 	AvgTOI             float64 `json:"avgTOI"`
 	SeasonShotsPerGame float64 `json:"seasonShotsPerGame"`
-	Confidence         float64 `json:"confidence"`
 	PredictedGameShots float64 `json:"predictedGameShots"`
+	Confidence         float64 `json:"confidence"`
+	RestDays           int     `json:"restDays"`
 }
 
 type TeamStats struct {

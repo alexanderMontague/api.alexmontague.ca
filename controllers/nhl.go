@@ -56,6 +56,17 @@ func GetPlayerShotStats(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var restDays map[int]int
+	restDays, err = repository.GetTeamsRest(date, games)
+	if err != nil {
+		json.NewEncoder(w).Encode(helpers.Response{
+			Error:   true,
+			Code:    500,
+			Message: "Error fetching NHL teams rest",
+		})
+		return
+	}
+
 	var allPlayers []models.PlayerStats
 	for _, game := range games {
 		players, err := service.GetPlayerStats(game.GameID, []models.Team{game.AwayTeam, game.HomeTeam})
@@ -63,7 +74,7 @@ func GetPlayerShotStats(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("Error fetching player stats:", err)
 			continue
 		}
-		playerStats := service.CalculateShootingStats(players, teamStats)
+		playerStats := service.CalculateShootingStats(players, teamStats, restDays)
 		allPlayers = append(allPlayers, playerStats...)
 	}
 

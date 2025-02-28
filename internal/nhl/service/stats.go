@@ -106,37 +106,61 @@ func GetPlayerStats(gameId int, teamInfo []models.Team) ([]models.PlayerDetail, 
 }
 
 func calculateConfidence(avgShots, avgTOI float64, trend []int, position string) float64 {
-	score := 0.0
+	var score float64
 
-	// Shot volume weight (0-5 points)
-	score += math.Min(avgShots/2, 5.0)
+	// Shot volume (0-4 points)
+	// Normalize based on typical NHL shot rates
+	// Most players average 1-4 shots per game, elite shooters >4
+	shotScore := math.Min(avgShots/4.0, 1.0) * 4
+	score += shotScore
 
-	// Recent trend analysis (0-3 points)
+	// Ice time (0-4 points) - Increased weight
+	// 20 mins is typical first line/top pair
+	// Additional bonus for high TOI players
+	toiBase := math.Min(avgTOI/20.0, 1.0) * 3
+	toiBonus := 0.0
+	if avgTOI > 18 {
+		// Extra point for high-minute players (18+ mins)
+		toiBonus = math.Min((avgTOI-18)/4, 1.0) // Max bonus at 22 mins
+	}
+	score += toiBase + toiBonus
+
+	// Trend analysis (0-1.5 points) - Slightly reduced to balance with TOI
 	if len(trend) >= 3 {
-		// Increasing trend
+		trendScore := 0.0
+
+		// Strong upward trend
 		if trend[2] > trend[1] && trend[1] > trend[0] {
-			score += 3
-		} else if trend[2] > trend[0] { // Generally improving
-			score += 1.5
+			trendScore = 1.5
+		} else if trend[2] > trend[0] { // General improvement
+			trendScore = 0.75
 		}
 
-		// Consistency factor
+		// Penalize high variance
 		variance := calculateVariance(trend)
-		score += math.Max(0, 2-variance) // Lower variance = higher score
-	}
+		consistencyFactor := math.Max(0.5, 1.0-variance/4.0)
+		trendScore *= consistencyFactor
 
-	// Ice time weight (0-4 points)
-	score += (avgTOI / 20.0) * 4
+		score += trendScore
+	}
 
 	// Position adjustment
 	if position == "D" {
-		score *= 0.85
+		score *= 0.9
 	}
 
-	// Normalize to 0-100 scale
-	normalizedScore := (score / 12.0) * 100
+	// Consistency bonus (0-0.5 points) - Adjusted for balance
+	if len(trend) >= 3 {
+		variance := calculateVariance(trend)
+		consistencyBonus := math.Max(0, 0.5-variance/6.0)
+		score += consistencyBonus
+	}
 
-	return math.Round(math.Min(normalizedScore, 100)*100) / 100
+	// Normalize to 0-10 scale
+	normalizedScore := (score / 10.0) * 10.0
+
+	// Round to 1 decimal place
+	return math.Round(normalizedScore*10) / 10
 }
 
 func getLeagueShotAverage(allTeamStats []models.TeamStats) float64 {
@@ -161,6 +185,7 @@ func calculatePredictedShots(
 	avgShotsLast5 float64,
 	seasonShotsPerGame float64,
 	teamStats []models.TeamStats,
+	restDays map[int]int,
 ) float64 {
 	currentTeam := getTeamStatsById(playerStats.CurrentTeamId, teamStats)
 	opposingTeam := getTeamStatsById(playerStats.OpposingTeamId, teamStats)
@@ -198,10 +223,26 @@ func calculatePredictedShots(
 		positionFactor *
 		icetimeFactor
 
+	// Rest factor (1.0 is baseline, increases with rest, decreases with back-to-back)
+	restFactor := 1.0
+	if days, exists := restDays[playerStats.CurrentTeamId]; exists {
+		switch {
+		case days == 0: // Back-to-back games
+			restFactor = 0.9
+		case days == 1:
+			restFactor = 0.95
+		case days >= 4:
+			restFactor = 1.1
+		}
+	}
+
+	// Apply rest factor to final prediction
+	adjustedPrediction = adjustedPrediction * restFactor
+
 	return math.Round(adjustedPrediction*10) / 10
 }
 
-func CalculateShootingStats(players []models.PlayerDetail, teamStats []models.TeamStats) []models.PlayerStats {
+func CalculateShootingStats(players []models.PlayerDetail, teamStats []models.TeamStats, restDays map[int]int) []models.PlayerStats {
 	var stats []models.PlayerStats
 
 	for _, player := range players {
@@ -254,8 +295,9 @@ func CalculateShootingStats(players []models.PlayerDetail, teamStats []models.Te
 				ShotTrend:          shotTrend,
 				AvgTOI:             avgTOI,
 				SeasonShotsPerGame: seasonShotsPerGame,
-				PredictedGameShots: calculatePredictedShots(player, avgShotsLast5, seasonShotsPerGame, teamStats),
+				PredictedGameShots: calculatePredictedShots(player, avgShotsLast5, seasonShotsPerGame, teamStats, restDays),
 				Confidence:         calculateConfidence(avgShotsLast5, avgTOI, shotTrend, player.Position),
+				RestDays:           restDays[player.CurrentTeamId],
 			})
 		}
 	}

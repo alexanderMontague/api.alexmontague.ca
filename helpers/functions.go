@@ -17,3 +17,12 @@ func Map[T any, R any](ts []T, fn func(T) R) []R {
 	}
 	return res
 }
+
+func Find[T any](slice []T, fn func(T) bool) *T {
+	for i := range slice {
+		if fn(slice[i]) {
+			return &slice[i]
+		}
+	}
+	return nil
+}
