@@ -2,7 +2,7 @@ package models
 
 const NHL_API_BASE = "https://api-web.nhle.com/v1"
 const NHL_STATS_API_BASE = "https://api.nhle.com/stats/rest/en"
-const MIN_SHOTS = 3
+const MIN_SHOTS = 2
 
 type Team struct {
 	Abbrev string `json:"abbrev"`
@@ -33,6 +33,7 @@ type PlayerStats struct {
 	PredictedGameShots float64 `json:"predictedGameShots"`
 	Confidence         float64 `json:"confidence"`
 	RestDays           int     `json:"restDays"`
+	Headshot           string  `json:"headshot"`
 }
 
 type TeamStats struct {
@@ -112,4 +113,5 @@ type PlayerDetail struct {
 		} `json:"regularSeason"`
 	} `json:"featuredStats"`
 	Last5Games []Last5Game `json:"last5Games"`
+	Headshot   string      `json:"headshot"`
 }

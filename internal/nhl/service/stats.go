@@ -105,13 +105,12 @@ func GetPlayerStats(gameId int, teamInfo []models.Team) ([]models.PlayerDetail, 
 	return allPlayers, nil
 }
 
-func calculateConfidence(avgShots, avgTOI float64, trend []int, position string) float64 {
+func calculateConfidence(predictedShots, avgTOI float64, trend []int, position string) float64 {
 	var score float64
 
 	// Shot volume (0-4 points)
-	// Normalize based on typical NHL shot rates
-	// Most players average 1-4 shots per game, elite shooters >4
-	shotScore := math.Min(avgShots/4.0, 1.0) * 4
+	// Use predicted shots instead of just average shots
+	shotScore := math.Min(predictedShots/4.0, 1.0) * 4
 	score += shotScore
 
 	// Ice time (0-4 points) - Increased weight
@@ -282,8 +281,10 @@ func CalculateShootingStats(players []models.PlayerDetail, teamStats []models.Te
 				float64(player.FeaturedStats.RegularSeason.SubSeason.GamesPlayed)
 		}
 
+		predictedGameShots := calculatePredictedShots(player, avgShotsLast5, seasonShotsPerGame, teamStats, restDays)
+
 		// Only include players meeting minimum shot threshold
-		if avgShotsLast5 >= models.MIN_SHOTS {
+		if predictedGameShots >= models.MIN_SHOTS {
 			stats = append(stats, models.PlayerStats{
 				PlayerId:           player.PlayerId,
 				Name:               fmt.Sprintf("%s %s", player.FirstName.Default, player.LastName.Default),
@@ -295,9 +296,10 @@ func CalculateShootingStats(players []models.PlayerDetail, teamStats []models.Te
 				ShotTrend:          shotTrend,
 				AvgTOI:             avgTOI,
 				SeasonShotsPerGame: seasonShotsPerGame,
-				PredictedGameShots: calculatePredictedShots(player, avgShotsLast5, seasonShotsPerGame, teamStats, restDays),
-				Confidence:         calculateConfidence(avgShotsLast5, avgTOI, shotTrend, player.Position),
+				PredictedGameShots: predictedGameShots,
+				Confidence:         calculateConfidence(predictedGameShots, avgTOI, shotTrend, player.Position),
 				RestDays:           restDays[player.CurrentTeamId],
+				Headshot:           player.Headshot,
 			})
 		}
 	}
