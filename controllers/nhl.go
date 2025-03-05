@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"api.alexmontague.ca/helpers"
-	"api.alexmontague.ca/internal/nhl/models"
 	"api.alexmontague.ca/internal/nhl/repository"
 	"api.alexmontague.ca/internal/nhl/service"
 )
@@ -25,74 +24,16 @@ func GetPlayerShotStats(w http.ResponseWriter, r *http.Request) {
 		date = now.In(loc).Format("2006-01-02")
 	}
 
-	fmt.Println("Fetching upcoming games for date:", date)
+	fmt.Println("[nhl/shots] Fetching upcoming games for date:", date)
 
-	games, err := repository.GetUpcomingGames(date)
+	gamesWithPlayers, err := service.GetPlayerShotStats(date)
 	if err != nil {
 		json.NewEncoder(w).Encode(helpers.Response{
 			Error:   true,
 			Code:    500,
-			Message: "Error fetching NHL games",
+			Message: fmt.Sprintf("Error fetching player shot stats: %s", err),
 		})
 		return
-	}
-
-	if len(games) == 0 {
-		json.NewEncoder(w).Encode(helpers.Response{
-			Error:   true,
-			Code:    404,
-			Message: "No NHL games found for date",
-		})
-		return
-	}
-
-	teamStats, err := repository.GetAllTeamStats(games[0].Season)
-	if err != nil {
-		json.NewEncoder(w).Encode(helpers.Response{
-			Error:   true,
-			Code:    500,
-			Message: "Error fetching NHL team stats",
-		})
-		return
-	}
-
-	var restDays map[int]int
-	restDays, err = repository.GetTeamsRest(date, games)
-	if err != nil {
-		json.NewEncoder(w).Encode(helpers.Response{
-			Error:   true,
-			Code:    500,
-			Message: "Error fetching NHL teams rest",
-		})
-		return
-	}
-
-	var allPlayers []models.PlayerStats
-	for _, game := range games {
-		players, err := service.GetPlayerStats(game.GameID, []models.Team{game.AwayTeam, game.HomeTeam})
-		if err != nil {
-			fmt.Println("Error fetching player stats:", err)
-			continue
-		}
-		playerStats := service.CalculateShootingStats(players, teamStats, restDays)
-		allPlayers = append(allPlayers, playerStats...)
-	}
-
-	var gamesWithPlayers []struct {
-		models.Game
-		Players []models.PlayerStats `json:"players"`
-	}
-
-	for _, game := range games {
-		gamesWithPlayers = append(gamesWithPlayers, struct {
-			models.Game
-			Players []models.PlayerStats `json:"players"`
-		}{
-			Game: game,
-			Players: helpers.Filter(allPlayers, func(player models.PlayerStats) bool {
-				return player.TeamId == game.AwayTeam.Id || player.TeamId == game.HomeTeam.Id
-			}),
-		})
 	}
 
 	fmt.Printf("Total API requests made: %d\n", atomic.LoadUint64(&repository.RequestCount))

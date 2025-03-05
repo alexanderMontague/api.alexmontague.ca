@@ -57,6 +57,7 @@ func GetUpcomingGames(date string) ([]models.Game, error) {
 					HomeTeam:     game.HomeTeam,
 					Season:       strconv.Itoa(game.Season),
 					StartTimeUTC: game.StartTimeUTC,
+					EstDate:      week.Date,
 				})
 			}
 		}

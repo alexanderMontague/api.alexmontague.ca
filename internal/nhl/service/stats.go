@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 
+	"api.alexmontague.ca/helpers"
 	"api.alexmontague.ca/internal/nhl/models"
 	"api.alexmontague.ca/internal/nhl/repository"
 )
@@ -351,4 +352,50 @@ func calculateVariance(numbers []int) float64 {
 	variance = variance / float64(len(numbers))
 
 	return variance
+}
+
+func GetPlayerShotStats(date string) ([]models.GamesWithPlayers, error) {
+	games, err := repository.GetUpcomingGames(date)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(games) == 0 {
+		return nil, fmt.Errorf("no NHL games found for date")
+	}
+
+	teamStats, err := repository.GetAllTeamStats(games[0].Season)
+	if err != nil {
+		return nil, err
+	}
+
+	var restDays map[int]int
+	restDays, err = repository.GetTeamsRest(date, games)
+	if err != nil {
+		return nil, err
+	}
+
+	var allPlayers []models.PlayerStats
+	for _, game := range games {
+		players, err := GetPlayerStats(game.GameID, []models.Team{game.AwayTeam, game.HomeTeam})
+		if err != nil {
+			fmt.Println("Error fetching player stats:", err)
+			continue
+		}
+		playerStats := CalculateShootingStats(players, teamStats, restDays)
+		allPlayers = append(allPlayers, playerStats...)
+	}
+
+	var gamesWithPlayers []models.GamesWithPlayers
+
+	for _, game := range games {
+		gamesWithPlayers = append(gamesWithPlayers, models.GamesWithPlayers{
+			Game: game,
+			Players: helpers.Filter(allPlayers, func(player models.PlayerStats) bool {
+				return player.TeamId == game.AwayTeam.Id || player.TeamId == game.HomeTeam.Id
+			}),
+		})
+	}
+
+	return gamesWithPlayers, nil
 }

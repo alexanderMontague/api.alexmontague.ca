@@ -7,6 +7,8 @@ import (
 
 	"api.alexmontague.ca/controllers"
 	"api.alexmontague.ca/data"
+	"api.alexmontague.ca/internal/cron"
+	"api.alexmontague.ca/internal/database"
 	"api.alexmontague.ca/middleware"
 	"github.com/friendsofgo/graphiql"
 	"github.com/gorilla/mux"
@@ -45,7 +47,18 @@ func handleRequests() {
 	// Start Server
 	log.Fatal(http.ListenAndServe(PORT, handler))
 }
+
 func main() {
+	// Initialize database
+	if err := database.InitDB("./nhl_predictions.db"); err != nil {
+		log.Fatalf("Failed to initialize database: %v", err)
+	}
+	defer database.Close()
+
+	// Start cron scheduler
+	cron.StartScheduler()
+	defer cron.StopScheduler()
+
 	fmt.Println("Running server on port", PORT)
 
 	err := godotenv.Load(".env")

@@ -17,6 +17,7 @@ type Game struct {
 	HomeTeam     Team   `json:"homeTeam"`
 	Season       string `json:"season"`
 	StartTimeUTC string `json:"startTimeUTC"`
+	EstDate      string `json:"estDate"`
 }
 
 type PlayerStats struct {
@@ -114,4 +115,9 @@ type PlayerDetail struct {
 	} `json:"featuredStats"`
 	Last5Games []Last5Game `json:"last5Games"`
 	Headshot   string      `json:"headshot"`
+}
+
+type GamesWithPlayers struct {
+	Game
+	Players []PlayerStats `json:"players"`
 }
