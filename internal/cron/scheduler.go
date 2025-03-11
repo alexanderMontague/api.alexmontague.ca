@@ -3,11 +3,9 @@ package cron
 import (
 	"fmt"
 	"log"
-	"math"
 	"time"
 
 	"api.alexmontague.ca/internal/database/repository"
-	"api.alexmontague.ca/internal/nhl/models"
 	nhlRepo "api.alexmontague.ca/internal/nhl/repository"
 	"api.alexmontague.ca/internal/nhl/service"
 	"github.com/robfig/cron/v3"
@@ -19,149 +17,113 @@ var scheduler *cron.Cron
 func StartScheduler() {
 	scheduler = cron.New(cron.WithSeconds())
 
-	// Fetch daily games and make predictions (run at midnight ET)
-	scheduler.AddFunc("0 0 5 * * *", fetchDailyGamesWithRetry)
+	// Daily job to fetch games and make predictions - runs at 4:00 AM EST
+	scheduler.AddFunc("0 0 4 * * *", func() {
+		log.Println("Running daily prediction job")
+		if err := fetchDailyPredictions(nil); err != nil {
+			log.Printf("Error in daily prediction job: %v", err)
+			// Retry after 30 minutes if failed
+			time.AfterFunc(30*time.Minute, func() {
+				log.Println("Retrying daily prediction job")
+				if err := fetchDailyPredictions(nil); err != nil {
+					log.Printf("Retry failed: %v", err)
+				}
+			})
+		}
+	})
 
-	// Validate completed games (run every 6 hours)
-	scheduler.AddFunc("0 0 */6 * * *", validateCompletedGamesWithRetry)
+	// Hourly job to validate completed games - runs every hour
+	scheduler.AddFunc("0 0 * * * *", func() {
+		log.Println("Running validation job")
+		if err := validateCompletedGames(nil); err != nil {
+			log.Printf("Error in validation job: %v", err)
+			// Retry after 15 minutes if failed
+			time.AfterFunc(15*time.Minute, func() {
+				log.Println("Retrying validation job")
+				if err := validateCompletedGames(nil); err != nil {
+					log.Printf("Retry failed: %v", err)
+				}
+			})
+		}
+	})
 
 	scheduler.Start()
+	log.Println("Scheduler started")
 }
 
-// StopScheduler stops the scheduler
+// StopScheduler stops the cron scheduler
 func StopScheduler() {
 	if scheduler != nil {
 		scheduler.Stop()
+		log.Println("Scheduler stopped")
 	}
 }
 
-// fetchDailyGamesWithRetry gets games with exponential backoff retry
-func fetchDailyGamesWithRetry() {
-	maxRetries := 5
-	for i := 0; i < maxRetries; i++ {
-		if err := fetchDailyGames(); err != nil {
-			backoff := time.Duration(math.Pow(2, float64(i))) * time.Minute
-			log.Printf("Failed to fetch daily games (attempt %d/%d): %v. Retrying in %v...",
-				i+1, maxRetries, err, backoff)
-			time.Sleep(backoff)
-			continue
-		}
-		return // Success
-	}
-	log.Printf("Failed to fetch daily games after %d attempts", maxRetries)
-}
-
-// fetchDailyGames gets today's games and stores predictions
-func fetchDailyGames() error {
-	today := time.Now().Format("2006-01-02")
-	games, err := nhlRepo.GetUpcomingGames(today)
-	if err != nil {
-		return fmt.Errorf("failed to get upcoming games: %w", err)
-	}
-
-	// Store games in database
-	for _, game := range games {
-		if err := repository.InsertGame(game); err != nil {
-			return fmt.Errorf("failed to insert game: %w", err)
-		}
-	}
-
-	// Get team stats for the current season
-	season := ""
-	if len(games) > 0 {
-		season = games[0].Season
+// fetchDailyPredictions fetches games for today and makes predictions
+func fetchDailyPredictions(date *string) error {
+	// Get today's date in EST
+	est, _ := time.LoadLocation("America/New_York")
+	var today string
+	if date == nil {
+		today = time.Now().In(est).Format("2006-01-02")
 	} else {
-		// If no games today, use current year
-		season = time.Now().Format("20062007")
+		today = *date
 	}
 
-	teamStats, err := nhlRepo.GetAllTeamStats(season)
+	// Get games with predictions
+	gamesWithPlayers, err := service.GetPlayerShotStats(today)
 	if err != nil {
-		return fmt.Errorf("failed to get team stats: %w", err)
+		return fmt.Errorf("failed to get shot stats: %w", err)
 	}
 
-	// Get rest days for teams
-	restDays, err := nhlRepo.GetTeamsRest(today, games)
-	if err != nil {
-		log.Printf("Warning: Failed to get rest days: %v", err)
-		restDays = make(map[int]int) // Use empty map instead of failing
-	}
+	// Store each game prediction
+	for _, gameWithPlayers := range gamesWithPlayers {
 
-	// Process each game
-	for _, game := range games {
-		// Get both teams for the game
-		teamInfo := []models.Team{game.AwayTeam, game.HomeTeam}
-
-		// Get player stats
-		players, err := service.GetPlayerStats(game.GameID, teamInfo)
-		if err != nil {
-			return fmt.Errorf("failed to get player stats for game %d: %w", game.GameID, err)
-		}
-
-		// Calculate shot predictions
-		predictions := service.CalculateShootingStats(players, teamStats, restDays)
-
-		// Store predictions
-		if err := repository.StorePredictions(game.GameID, predictions); err != nil {
-			return fmt.Errorf("failed to store predictions for game %d: %w", game.GameID, err)
-		}
-
-		// Mark game as processed
-		if err := repository.MarkGameProcessed(game.GameID); err != nil {
-			return fmt.Errorf("failed to mark game as processed: %w", err)
-		}
-	}
-
-	return nil
-}
-
-// validateCompletedGamesWithRetry validates games with exponential backoff retry
-func validateCompletedGamesWithRetry() {
-	maxRetries := 5
-	for i := 0; i < maxRetries; i++ {
-		if err := validateCompletedGames(); err != nil {
-			backoff := time.Duration(math.Pow(2, float64(i))) * time.Minute
-			log.Printf("Failed to validate games (attempt %d/%d): %v. Retrying in %v...",
-				i+1, maxRetries, err, backoff)
-			time.Sleep(backoff)
+		if err := repository.StoreGamePredictions(gameWithPlayers); err != nil {
+			log.Printf("Error storing predictions for game %d: %v", gameWithPlayers.Game.GameID, err)
 			continue
 		}
-		return // Success
-	}
-	log.Printf("Failed to validate games after %d attempts", maxRetries)
-}
 
-// validateCompletedGames validates shot predictions against actual results
-func validateCompletedGames() error {
-	// Get completed games that need validation
-	gameIDs, err := repository.GetCompletedUnvalidatedGames()
-	if err != nil {
-		return fmt.Errorf("failed to get unvalidated games: %w", err)
-	}
-
-	for _, gameID := range gameIDs {
-		// Implement NHL API call to fetch actual shot results
-		// This is hypothetical and would need to be implemented based on NHL API
-		actualShots, err := fetchActualShots(gameID)
-		if err != nil {
-			return fmt.Errorf("failed to fetch actual shots for game %d: %w", gameID, err)
-		}
-
-		// Store actual results
-		for playerID, shots := range actualShots {
-			if err := repository.StoreActualShots(gameID, playerID, shots); err != nil {
-				return fmt.Errorf("failed to store shot results: %w", err)
-			}
-		}
+		log.Printf("Stored predictions for game %d: %s", gameWithPlayers.Game.GameID, gameWithPlayers.Game.Title)
 	}
 
 	return nil
 }
 
-// fetchActualShots gets the actual shots for all players in a game
-// This would need to be implemented using the NHL API
-func fetchActualShots(gameID int) (map[int]int, error) {
-	// This is a placeholder that should be replaced with actual NHL API implementation
-	// Example structure: map[playerID]shotCount
-	return map[int]int{}, fmt.Errorf("not implemented yet")
+// validateCompletedGames validates predictions for completed games
+func validateCompletedGames(date *string) error {
+	est, _ := time.LoadLocation("America/New_York")
+	var today string
+	if date == nil {
+		today = time.Now().In(est).Format("2006-01-02")
+	} else {
+		today = *date
+	}
+	predictionRecords, err := repository.GetGamePredictionsForDate(today)
+	log.Printf("Found %d predictions for date %s", len(predictionRecords), today)
+	if err != nil {
+		return fmt.Errorf("failed to get pending games: %w", err)
+	}
+
+	// Get actual shots for all games
+	gameIDs := make([]int, len(predictionRecords))
+	for i, prediction := range predictionRecords {
+		gameIDs[i] = prediction.GameID
+	}
+	actualShots, err := nhlRepo.FetchActualGameShots(gameIDs)
+	if err != nil {
+		log.Printf("Error fetching results for games %v: %v", gameIDs, err)
+		return fmt.Errorf("failed to fetch actual shots: %w", err)
+	}
+
+	for _, prediction := range predictionRecords {
+		if err := repository.StoreActualShots(prediction, actualShots[prediction.PlayerID]); err != nil {
+			log.Printf("Error storing results for game %d: %v", prediction.GameID, err)
+			continue
+		}
+
+		log.Printf("Validated game %d", prediction.GameID)
+	}
+
+	return nil
 }

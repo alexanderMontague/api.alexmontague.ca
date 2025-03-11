@@ -117,7 +117,27 @@ type PlayerDetail struct {
 	Headshot   string      `json:"headshot"`
 }
 
-type GamesWithPlayers struct {
+type GameWithPlayers struct {
 	Game
 	Players []PlayerStats `json:"players"`
+}
+
+type PredictionRecord struct {
+	ID               int     `json:"id"`
+	GameDate         string  `json:"game_date"`
+	GameID           int     `json:"game_id"`
+	GameTitle        string  `json:"game_title"`
+	AwayTeamAbbrev   string  `json:"away_team_abbrev"`
+	AwayTeamID       int     `json:"away_team_id"`
+	HomeTeamAbbrev   string  `json:"home_team_abbrev"`
+	HomeTeamID       int     `json:"home_team_id"`
+	PlayerID         int     `json:"player_id"`
+	PlayerName       string  `json:"player_name"`
+	PlayerTeamAbbrev string  `json:"player_team_abbrev"`
+	PlayerTeamID     int     `json:"player_team_id"`
+	PredictedShots   float64 `json:"predicted_shots"`
+	Confidence       float64 `json:"confidence"`
+	ActualShots      *int    `json:"actual_shots,omitempty"`
+	Successful       *bool   `json:"successful,omitempty"`
+	CreatedAt        string  `json:"created_at"`
 }

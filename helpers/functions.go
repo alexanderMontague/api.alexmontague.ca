@@ -1,5 +1,7 @@
 package helpers
 
+import "time"
+
 func Filter[T any](slice []T, f func(T) bool) []T {
 	filtered := make([]T, 0)
 	for _, item := range slice {
@@ -25,4 +27,10 @@ func Find[T any](slice []T, fn func(T) bool) *T {
 		}
 	}
 	return nil
+}
+
+func GetCurrentESTDate() string {
+	now := time.Now()
+	loc, _ := time.LoadLocation("America/New_York")
+	return now.In(loc).Format("2006-01-02")
 }

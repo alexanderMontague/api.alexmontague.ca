@@ -3,55 +3,67 @@ package repository
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 
 	"api.alexmontague.ca/internal/nhl/models"
 )
 
 // FetchActualGameShots retrieves actual shot data from completed games
-func FetchActualGameShots(gameID int) (map[int]int, error) {
-	// NHL API for game stats
-	url := fmt.Sprintf("%s/gamecenter/%d/boxscore", models.NHL_API_BASE, gameID)
-	resp, err := HTTPGetAndCount(url)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	var boxscore struct {
-		AwayTeam struct {
-			Players map[string]struct {
-				PlayerID int `json:"playerId"`
-				Stats    struct {
-					Shots int `json:"shots"`
-				} `json:"stats"`
-			} `json:"players"`
-		} `json:"awayTeam"`
-		HomeTeam struct {
-			Players map[string]struct {
-				PlayerID int `json:"playerId"`
-				Stats    struct {
-					Shots int `json:"shots"`
-				} `json:"stats"`
-			} `json:"players"`
-		} `json:"homeTeam"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&boxscore); err != nil {
-		return nil, err
-	}
-
-	// Combine results from both teams
+func FetchActualGameShots(gameIDs []int) (map[int]int, error) {
+	// Create map to store player shot results
 	results := make(map[int]int)
 
-	// Process away team
-	for _, player := range boxscore.AwayTeam.Players {
-		results[player.PlayerID] = player.Stats.Shots
+	// Get unique game IDs
+	uniqueGameIDs := make(map[int]bool)
+	for _, id := range gameIDs {
+		uniqueGameIDs[id] = true
 	}
 
-	// Process home team
-	for _, player := range boxscore.HomeTeam.Players {
-		results[player.PlayerID] = player.Stats.Shots
+	// Process each unique game
+	for gameID := range uniqueGameIDs {
+		// NHL API for game stats
+		url := fmt.Sprintf("%s/gamecenter/%d/boxscore", models.NHL_API_BASE, gameID)
+		resp, err := HTTPGetAndCount(url)
+		if err != nil {
+			return nil, err
+		}
+
+		type PlayerShotResult struct {
+			PlayerID int `json:"playerId"`
+			Sog      int `json:"sog"`
+		}
+
+		var boxscore struct {
+			PlayerByGameStats struct {
+				AwayTeam struct {
+					Forwards []PlayerShotResult `json:"forwards"`
+					Defense  []PlayerShotResult `json:"defense"`
+				} `json:"awayTeam"`
+				HomeTeam struct {
+					Forwards []PlayerShotResult `json:"forwards"`
+					Defense  []PlayerShotResult `json:"defense"`
+				} `json:"homeTeam"`
+			} `json:"playerByGameStats"`
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&boxscore); err != nil {
+			resp.Body.Close()
+			return nil, err
+		}
+		resp.Body.Close()
+
+		// Process away team
+		for _, player := range append(boxscore.PlayerByGameStats.AwayTeam.Forwards, boxscore.PlayerByGameStats.AwayTeam.Defense...) {
+			results[player.PlayerID] = player.Sog
+		}
+
+		// Process home team
+		for _, player := range append(boxscore.PlayerByGameStats.HomeTeam.Forwards, boxscore.PlayerByGameStats.HomeTeam.Defense...) {
+			results[player.PlayerID] = player.Sog
+		}
 	}
+
+	log.Printf("Fetched shots for %d players", len(results))
 
 	return results, nil
 }

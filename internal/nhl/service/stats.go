@@ -354,7 +354,7 @@ func calculateVariance(numbers []int) float64 {
 	return variance
 }
 
-func GetPlayerShotStats(date string) ([]models.GamesWithPlayers, error) {
+func GetPlayerShotStats(date string) ([]models.GameWithPlayers, error) {
 	games, err := repository.GetUpcomingGames(date)
 	if err != nil {
 		return nil, err
@@ -386,10 +386,10 @@ func GetPlayerShotStats(date string) ([]models.GamesWithPlayers, error) {
 		allPlayers = append(allPlayers, playerStats...)
 	}
 
-	var gamesWithPlayers []models.GamesWithPlayers
+	var gamesWithPlayers []models.GameWithPlayers
 
 	for _, game := range games {
-		gamesWithPlayers = append(gamesWithPlayers, models.GamesWithPlayers{
+		gamesWithPlayers = append(gamesWithPlayers, models.GameWithPlayers{
 			Game: game,
 			Players: helpers.Filter(allPlayers, func(player models.PlayerStats) bool {
 				return player.TeamId == game.AwayTeam.Id || player.TeamId == game.HomeTeam.Id

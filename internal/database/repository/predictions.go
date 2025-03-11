@@ -1,44 +1,50 @@
 package repository
 
 import (
-	"time"
+	"fmt"
 
 	"api.alexmontague.ca/internal/database"
 	"api.alexmontague.ca/internal/nhl/models"
 )
 
-// StorePredictions saves player shot predictions to the database
-func StorePredictions(gameID int, predictions []models.PlayerStats) error {
+// StoreGamePredictions stores predictions for a game in the simplified format
+func StoreGamePredictions(game models.GameWithPlayers) error {
 	tx, err := database.DB.Begin()
 	if err != nil {
 		return err
 	}
 
 	stmt, err := tx.Prepare(`
-	INSERT OR REPLACE INTO player_predictions
-	(game_id, player_id, player_name, team_id, team_abbrev, position,
-	 predicted_shots, confidence, avg_shots_last5, rest_days, prediction_time)
-	VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+	INSERT OR REPLACE INTO game_predictions (
+		game_date, game_id, game_title,
+		away_team_abbrev, away_team_id, home_team_abbrev, home_team_id,
+		player_id, player_name, player_team_abbrev, player_team_id,
+		predicted_shots, confidence
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+
 	if err != nil {
 		tx.Rollback()
 		return err
 	}
 	defer stmt.Close()
 
-	for _, p := range predictions {
+	for _, player := range game.Players {
 		_, err = stmt.Exec(
-			gameID,
-			p.PlayerId,
-			p.Name,
-			p.TeamId,
-			p.TeamAbbrev,
-			p.Position,
-			p.PredictedGameShots,
-			p.Confidence,
-			p.AvgShotsLast5,
-			p.RestDays,
-			time.Now(),
+			game.EstDate,
+			game.GameID,
+			game.Title,
+			game.AwayTeam.Abbrev,
+			game.AwayTeam.Id,
+			game.HomeTeam.Abbrev,
+			game.HomeTeam.Id,
+			player.PlayerId,
+			player.Name,
+			player.TeamAbbrev,
+			player.TeamId,
+			player.PredictedGameShots,
+			player.Confidence,
 		)
+
 		if err != nil {
 			tx.Rollback()
 			return err
@@ -48,37 +54,83 @@ func StorePredictions(gameID int, predictions []models.PlayerStats) error {
 	return tx.Commit()
 }
 
-// GetPredictionsForGame retrieves all predictions for a specific game
-func GetPredictionsForGame(gameID int) ([]models.PlayerStats, error) {
-	rows, err := database.DB.Query(`
-	SELECT player_id, player_name, team_id, team_abbrev, position,
-	       predicted_shots, confidence, avg_shots_last5, rest_days
-	FROM player_predictions
-	WHERE game_id = ?
-	ORDER BY confidence DESC`, gameID)
+// GetGamePredictionsForDate retrieves all predictions for a specific date
+func GetGamePredictionsForDate(date string) ([]models.PredictionRecord, error) {
+	query := `
+	SELECT id, game_date, game_id, game_title,
+	       away_team_abbrev, away_team_id, home_team_abbrev, home_team_id,
+	       player_id, player_name, player_team_abbrev, player_team_id,
+	       predicted_shots, confidence, actual_shots, successful
+	FROM game_predictions
+	WHERE game_date = ?;`
+
+	gameRows, err := database.DB.Query(query, date)
 	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+	defer gameRows.Close()
+
+	var predictionRecords []models.PredictionRecord
+
+	for gameRows.Next() {
+		var record models.PredictionRecord
+		err := gameRows.Scan(
+			&record.ID,
+			&record.GameDate,
+			&record.GameID,
+			&record.GameTitle,
+			&record.AwayTeamAbbrev,
+			&record.AwayTeamID,
+			&record.HomeTeamAbbrev,
+			&record.HomeTeamID,
+			&record.PlayerID,
+			&record.PlayerName,
+			&record.PlayerTeamAbbrev,
+			&record.PlayerTeamID,
+			&record.PredictedShots,
+			&record.Confidence,
+			&record.ActualShots,
+			&record.Successful,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan error: %w", err)
+		}
+		predictionRecords = append(predictionRecords, record)
+	}
+
+	if err := gameRows.Err(); err != nil {
+		fmt.Printf("Error: %v\n", err)
 		return nil, err
 	}
-	defer rows.Close()
 
-	var predictions []models.PlayerStats
-	for rows.Next() {
-		var p models.PlayerStats
-		if err := rows.Scan(
-			&p.PlayerId,
-			&p.Name,
-			&p.TeamId,
-			&p.TeamAbbrev,
-			&p.Position,
-			&p.PredictedGameShots,
-			&p.Confidence,
-			&p.AvgShotsLast5,
-			&p.RestDays,
-		); err != nil {
-			return nil, err
-		}
-		predictions = append(predictions, p)
+	fmt.Printf("Found %d records\n", len(predictionRecords))
+	return predictionRecords, nil
+}
+
+func StoreActualShots(predictionRecord models.PredictionRecord, actualShots int) error {
+	tx, err := database.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.Prepare(`
+		UPDATE game_predictions
+		SET actual_shots = ?, successful = ?
+		WHERE id = ?
+	`)
+
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	successful := actualShots >= int(predictionRecord.PredictedShots)
+
+	_, err = stmt.Exec(actualShots, successful, predictionRecord.ID)
+	if err != nil {
+		return err
 	}
 
-	return predictions, nil
+	return tx.Commit()
 }
