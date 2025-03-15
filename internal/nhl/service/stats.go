@@ -1,110 +1,16 @@
 package service
 
 import (
-	"encoding/json"
 	"fmt"
 	"math"
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 
 	"api.alexmontague.ca/helpers"
 	"api.alexmontague.ca/internal/nhl/models"
 	"api.alexmontague.ca/internal/nhl/repository"
 )
-
-func GetPlayerStats(gameId int, teamInfo []models.Team) ([]models.PlayerDetail, error) {
-	var allPlayers []models.PlayerDetail
-	playerChan := make(chan models.PlayerDetail, 50) // Buffered channel to prevent blocking
-	errorChan := make(chan error, 2)                 // Buffer for potential errors
-	var wg sync.WaitGroup
-
-	// Fetch rosters for both teams concurrently
-	for _, team := range teamInfo {
-		wg.Add(1)
-		go func(team models.Team) {
-			defer wg.Done()
-
-			rosterURL := fmt.Sprintf("%s/roster/%s/current", models.NHL_API_BASE, team.Abbrev)
-			resp, err := repository.HTTPGetAndCount(rosterURL)
-			if err != nil {
-				errorChan <- err
-				return
-			}
-			defer resp.Body.Close()
-
-			var roster models.RosterResponse
-			if err := json.NewDecoder(resp.Body).Decode(&roster); err != nil {
-				errorChan <- err
-				return
-			}
-
-			// Combine forwards and defensemen
-			allSkaters := append(roster.Forwards, roster.Defensemen...)
-
-			// Create a WaitGroup for players within this team
-			var playerWg sync.WaitGroup
-			for _, player := range allSkaters {
-				playerWg.Add(1)
-				go func(p models.Player) {
-					defer playerWg.Done()
-
-					playerURL := fmt.Sprintf("%s/player/%d/landing", models.NHL_API_BASE, p.Id)
-					playerResp, err := repository.HTTPGetAndCount(playerURL)
-					if err != nil {
-						errorChan <- err
-						return
-					}
-					defer playerResp.Body.Close()
-
-					var playerDetail models.PlayerDetail
-					if err := json.NewDecoder(playerResp.Body).Decode(&playerDetail); err != nil {
-						errorChan <- err
-						return
-					}
-					if team.Id == teamInfo[0].Id {
-						playerDetail.OpposingTeamId = teamInfo[1].Id
-						playerDetail.OpposingTeamAbbrev = teamInfo[1].Abbrev
-					} else {
-						playerDetail.OpposingTeamId = teamInfo[0].Id
-						playerDetail.OpposingTeamAbbrev = teamInfo[0].Abbrev
-					}
-
-					select {
-					case playerChan <- playerDetail:
-					default:
-						fmt.Printf("Warning: Could not send player %d to channel\n", p.Id)
-					}
-				}(player)
-			}
-			playerWg.Wait()
-		}(team)
-	}
-
-	// Wait in a separate goroutine and close channels when done
-	go func() {
-		wg.Wait()
-		close(playerChan)
-		close(errorChan)
-	}()
-
-	// Check for errors first
-	select {
-	case err := <-errorChan:
-		if err != nil {
-			return nil, err
-		}
-	default:
-	}
-
-	// Collect all players from channel
-	for player := range playerChan {
-		allPlayers = append(allPlayers, player)
-	}
-
-	return allPlayers, nil
-}
 
 func calculateConfidence(predictedShots, avgTOI float64, trend []int, position string) float64 {
 	var score float64
@@ -377,7 +283,7 @@ func GetPlayerShotStats(date string) ([]models.GameWithPlayers, error) {
 
 	var allPlayers []models.PlayerStats
 	for _, game := range games {
-		players, err := GetPlayerStats(game.GameID, []models.Team{game.AwayTeam, game.HomeTeam})
+		players, err := repository.GetPlayerStats(game.GameID, []models.Team{game.AwayTeam, game.HomeTeam})
 		if err != nil {
 			fmt.Println("Error fetching player stats:", err)
 			continue
