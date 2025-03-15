@@ -1,6 +1,9 @@
 package helpers
 
-import "time"
+import (
+	"os"
+	"time"
+)
 
 func Filter[T any](slice []T, f func(T) bool) []T {
 	filtered := make([]T, 0)
@@ -33,4 +36,8 @@ func GetCurrentESTDate() string {
 	now := time.Now()
 	loc, _ := time.LoadLocation("America/New_York")
 	return now.In(loc).Format("2006-01-02")
+}
+
+func IsRunningLocally() bool {
+	return os.Getenv("ENV") == "local"
 }

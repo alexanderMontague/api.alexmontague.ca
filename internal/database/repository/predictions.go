@@ -2,6 +2,7 @@ package repository
 
 import (
 	"fmt"
+	"time"
 
 	"api.alexmontague.ca/internal/database"
 	"api.alexmontague.ca/internal/nhl/models"
@@ -19,8 +20,8 @@ func StoreGamePredictions(game models.GameWithPlayers) error {
 		game_date, game_id, game_title,
 		away_team_abbrev, away_team_id, home_team_abbrev, home_team_id,
 		player_id, player_name, player_team_abbrev, player_team_id,
-		predicted_shots, confidence
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		predicted_shots, confidence, created_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 
 	if err != nil {
 		tx.Rollback()
@@ -43,6 +44,7 @@ func StoreGamePredictions(game models.GameWithPlayers) error {
 			player.TeamId,
 			player.PredictedGameShots,
 			player.Confidence,
+			time.Now().Format("2006-01-02 15:04:05"),
 		)
 
 		if err != nil {

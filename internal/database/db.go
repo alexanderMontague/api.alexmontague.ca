@@ -2,14 +2,26 @@ package database
 
 import (
 	"database/sql"
+	"log"
+	"os"
+	"path/filepath"
 
+	"api.alexmontague.ca/internal/database/migrations"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 var DB *sql.DB
 
-// InitDB initializes the database connection
+// InitDB initializes the database connection and runs migrations
 func InitDB(dbPath string) error {
+	// Ensure directory exists
+	dbDir := filepath.Dir(dbPath)
+	if _, err := os.Stat(dbDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(dbDir, 0755); err != nil {
+			return err
+		}
+	}
+
 	var err error
 	DB, err = sql.Open("sqlite3", dbPath)
 	if err != nil {
@@ -21,35 +33,16 @@ func InitDB(dbPath string) error {
 		return err
 	}
 
-	// Create simplified schema with a single table for game predictions
-	_, err = DB.Exec(`
-	CREATE TABLE IF NOT EXISTS game_predictions (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		game_date TEXT NOT NULL,
-		game_id INTEGER NOT NULL,
-		game_title TEXT NOT NULL,
-		away_team_abbrev TEXT NOT NULL,
-		away_team_id INTEGER NOT NULL,
-		home_team_abbrev TEXT NOT NULL,
-		home_team_id INTEGER NOT NULL,
-		player_id INTEGER NOT NULL,
-		player_name TEXT NOT NULL,
-		player_team_abbrev TEXT NOT NULL,
-		player_team_id INTEGER NOT NULL,
-		predicted_shots REAL NOT NULL,
-		confidence REAL NOT NULL,
-		actual_shots INTEGER,
-		successful BOOLEAN,
-		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-		UNIQUE(game_id, player_id)
-	);
+	// Run migrations instead of direct schema creation
+	migrationsDir := "./internal/database/migrations/scripts"
+	log.Println("Running database migrations...")
+	if err := migrations.MigrateUp(DB, migrationsDir); err != nil {
+		log.Printf("Error running migrations: %v", err)
+		return err
+	}
+	log.Println("Database migrations completed successfully")
 
-	CREATE INDEX IF NOT EXISTS idx_game_predictions_game_id ON game_predictions(game_id);
-	CREATE INDEX IF NOT EXISTS idx_game_predictions_game_date ON game_predictions(game_date);
-	CREATE INDEX IF NOT EXISTS idx_game_predictions_player_id ON game_predictions(player_id);
-	`)
-
-	return err
+	return nil
 }
 
 // Close closes the database connection

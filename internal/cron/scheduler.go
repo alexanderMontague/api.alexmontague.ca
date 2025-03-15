@@ -20,12 +20,12 @@ func StartScheduler() {
 	// Daily job to fetch games and make predictions - runs at 4:00 AM EST
 	scheduler.AddFunc("0 0 4 * * *", func() {
 		log.Println("Running daily prediction job")
-		if err := fetchDailyPredictions(nil); err != nil {
+		if err := FetchDailyPredictions(nil); err != nil {
 			log.Printf("Error in daily prediction job: %v", err)
 			// Retry after 30 minutes if failed
 			time.AfterFunc(30*time.Minute, func() {
 				log.Println("Retrying daily prediction job")
-				if err := fetchDailyPredictions(nil); err != nil {
+				if err := FetchDailyPredictions(nil); err != nil {
 					log.Printf("Retry failed: %v", err)
 				}
 			})
@@ -35,12 +35,12 @@ func StartScheduler() {
 	// Hourly job to validate completed games - runs every hour
 	scheduler.AddFunc("0 0 * * * *", func() {
 		log.Println("Running validation job")
-		if err := validateCompletedGames(nil); err != nil {
+		if err := ValidateCompletedGames(nil); err != nil {
 			log.Printf("Error in validation job: %v", err)
 			// Retry after 15 minutes if failed
 			time.AfterFunc(15*time.Minute, func() {
 				log.Println("Retrying validation job")
-				if err := validateCompletedGames(nil); err != nil {
+				if err := ValidateCompletedGames(nil); err != nil {
 					log.Printf("Retry failed: %v", err)
 				}
 			})
@@ -59,8 +59,8 @@ func StopScheduler() {
 	}
 }
 
-// fetchDailyPredictions fetches games for today and makes predictions
-func fetchDailyPredictions(date *string) error {
+// FetchDailyPredictions fetches games for today and makes predictions
+func FetchDailyPredictions(date *string) error {
 	// Get today's date in EST
 	est, _ := time.LoadLocation("America/New_York")
 	var today string
@@ -90,8 +90,8 @@ func fetchDailyPredictions(date *string) error {
 	return nil
 }
 
-// validateCompletedGames validates predictions for completed games
-func validateCompletedGames(date *string) error {
+// ValidateCompletedGames validates predictions for completed games
+func ValidateCompletedGames(date *string) error {
 	est, _ := time.LoadLocation("America/New_York")
 	var today string
 	if date == nil {

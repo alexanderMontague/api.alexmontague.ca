@@ -41,6 +41,7 @@ func handleRequests() {
 	router.HandleFunc("/cors", controllers.CorsAnywhere).Methods("GET")
 	router.HandleFunc("/nhl/shots", controllers.GetPlayerShotStats).Methods("GET")
 	router.HandleFunc("/nhl/shots/records", controllers.GetPlayerShotRecords).Methods("GET")
+	router.HandleFunc("/nhl/shots/seed", controllers.SeedAndValidatePredictions).Methods("GET")
 
 	// CORS middleware
 	handler := cors.Default().Handler(router)
