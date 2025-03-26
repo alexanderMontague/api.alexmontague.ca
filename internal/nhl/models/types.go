@@ -21,20 +21,21 @@ type Game struct {
 }
 
 type PlayerStats struct {
-	PlayerId           int     `json:"playerId"`
-	Name               string  `json:"name"`
-	Position           string  `json:"position"`
-	TeamAbbrev         string  `json:"teamAbbrev"`
-	TeamId             int     `json:"teamId"`
-	ShotsLast5         []int   `json:"shotsLast5"`
-	AvgShotsLast5      float64 `json:"avgShotsLast5"`
-	ShotTrend          []int   `json:"shotTrend"`
-	AvgTOI             float64 `json:"avgTOI"`
-	SeasonShotsPerGame float64 `json:"seasonShotsPerGame"`
-	PredictedGameShots float64 `json:"predictedGameShots"`
-	Confidence         float64 `json:"confidence"`
-	RestDays           int     `json:"restDays"`
-	Headshot           string  `json:"headshot"`
+	PlayerId               int     `json:"playerId"`
+	Name                   string  `json:"name"`
+	Position               string  `json:"position"`
+	TeamAbbrev             string  `json:"teamAbbrev"`
+	TeamId                 int     `json:"teamId"`
+	ShotsLast5             []int   `json:"shotsLast5"`
+	AvgShotsLast5          float64 `json:"avgShotsLast5"`
+	ShotTrend              []int   `json:"shotTrend"`
+	AvgTOI                 float64 `json:"avgTOI"`
+	SeasonShotsPerGame     float64 `json:"seasonShotsPerGame"`
+	PredictedGameShots     float64 `json:"predictedGameShots"`
+	Confidence             float64 `json:"confidence"`
+	RestDays               int     `json:"restDays"`
+	Headshot               string  `json:"headshot"`
+	PastPredictionAccuracy float64 `json:"pastPredictionAccuracy"`
 }
 
 type TeamStats struct {
@@ -88,8 +89,9 @@ type RosterResponse struct {
 }
 
 type Last5Game struct {
-	Shots int    `json:"shots"`
-	TOI   string `json:"toi"`
+	Shots    int    `json:"shots"`
+	TOI      string `json:"toi"`
+	GameDate string `json:"gameDate"`
 }
 
 type PlayerDetail struct {
@@ -140,4 +142,5 @@ type PredictionRecord struct {
 	ActualShots      *int    `json:"actual_shots,omitempty"`
 	Successful       *bool   `json:"successful,omitempty"`
 	CreatedAt        string  `json:"created_at"`
+	ValidatedAt      *string `json:"validated_at,omitempty"`
 }

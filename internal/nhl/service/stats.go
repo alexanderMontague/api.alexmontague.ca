@@ -6,8 +6,10 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"api.alexmontague.ca/helpers"
+	dbRepository "api.alexmontague.ca/internal/database/repository"
 	"api.alexmontague.ca/internal/nhl/models"
 	"api.alexmontague.ca/internal/nhl/repository"
 )
@@ -156,6 +158,11 @@ func CalculateShootingStats(players []models.PlayerDetail, teamStats []models.Te
 			continue
 		}
 
+		// Only include players who have played in the last 7 days
+		if player.Last5Games[0].GameDate < time.Now().AddDate(0, 0, -7).Format("2006-01-02") {
+			continue
+		}
+
 		// Calculate last 5 games shots
 		var totalShots float64
 		var shotsLast5 []int
@@ -295,11 +302,21 @@ func GetPlayerShotStats(date string) ([]models.GameWithPlayers, error) {
 	var gamesWithPlayers []models.GameWithPlayers
 
 	for _, game := range games {
+		filteredPlayers := helpers.Filter(allPlayers, func(player models.PlayerStats) bool {
+			return player.TeamId == game.AwayTeam.Id || player.TeamId == game.HomeTeam.Id
+		})
+
+		mappedPlayers := helpers.Map(filteredPlayers, func(player models.PlayerStats) models.PlayerStats {
+			player.PastPredictionAccuracy, err = dbRepository.GetPlayerPastPredictionAccuracy(player.PlayerId)
+			if err != nil {
+				fmt.Println("Error fetching player past prediction accuracy:", err)
+			}
+			return player
+		})
+
 		gamesWithPlayers = append(gamesWithPlayers, models.GameWithPlayers{
-			Game: game,
-			Players: helpers.Filter(allPlayers, func(player models.PlayerStats) bool {
-				return player.TeamId == game.AwayTeam.Id || player.TeamId == game.HomeTeam.Id
-			}),
+			Game:    game,
+			Players: mappedPlayers,
 		})
 	}
 

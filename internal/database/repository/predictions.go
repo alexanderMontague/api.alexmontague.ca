@@ -62,7 +62,7 @@ func GetGamePredictionsForDate(date string) ([]models.PredictionRecord, error) {
 	SELECT id, game_date, game_id, game_title,
 	       away_team_abbrev, away_team_id, home_team_abbrev, home_team_id,
 	       player_id, player_name, player_team_abbrev, player_team_id,
-	       predicted_shots, confidence, actual_shots, successful
+	       predicted_shots, confidence, actual_shots, successful, created_at, validated_at
 	FROM game_predictions
 	WHERE game_date = ?;`
 
@@ -93,6 +93,8 @@ func GetGamePredictionsForDate(date string) ([]models.PredictionRecord, error) {
 			&record.Confidence,
 			&record.ActualShots,
 			&record.Successful,
+			&record.CreatedAt,
+			&record.ValidatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan error: %w", err)
@@ -118,7 +120,7 @@ func StoreActualShots(predictionRecord models.PredictionRecord, actualShots int)
 
 	stmt, err := tx.Prepare(`
 		UPDATE game_predictions
-		SET actual_shots = ?, successful = ?
+		SET actual_shots = ?, successful = ?, validated_at = ?
 		WHERE id = ?
 	`)
 
@@ -129,10 +131,39 @@ func StoreActualShots(predictionRecord models.PredictionRecord, actualShots int)
 
 	successful := actualShots >= int(predictionRecord.PredictedShots)
 
-	_, err = stmt.Exec(actualShots, successful, predictionRecord.ID)
+	_, err = stmt.Exec(actualShots, successful, time.Now().Format("2006-01-02 15:04:05"), predictionRecord.ID)
 	if err != nil {
 		return err
 	}
 
 	return tx.Commit()
+}
+
+func GetTotalAccuracy() (float64, error) {
+	query := `
+	SELECT AVG(successful) FROM game_predictions
+	`
+
+	row := database.DB.QueryRow(query)
+	var accuracy float64
+	err := row.Scan(&accuracy)
+	if err != nil {
+		return 0, err
+	}
+	return accuracy, nil
+}
+
+func GetPlayerPastPredictionAccuracy(playerID int) (float64, error) {
+	query := `
+	SELECT AVG(successful) FROM game_predictions
+	WHERE player_id = ?
+	`
+
+	row := database.DB.QueryRow(query, playerID)
+	var accuracy float64
+	err := row.Scan(&accuracy)
+	if err != nil {
+		return 0, err
+	}
+	return accuracy, nil
 }

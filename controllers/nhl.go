@@ -9,6 +9,7 @@ import (
 	"api.alexmontague.ca/helpers"
 	"api.alexmontague.ca/internal/cron"
 	dbRepository "api.alexmontague.ca/internal/database/repository"
+	"api.alexmontague.ca/internal/nhl/models"
 	"api.alexmontague.ca/internal/nhl/repository"
 	"api.alexmontague.ca/internal/nhl/service"
 )
@@ -34,10 +35,25 @@ func GetPlayerShotStats(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-
 	fmt.Printf("Total API requests made: %d\n", atomic.LoadUint64(&repository.RequestCount))
 
-	json.NewEncoder(w).Encode(gamesWithPlayers)
+	totalAccuracy, err := dbRepository.GetTotalAccuracy()
+	if err != nil {
+		json.NewEncoder(w).Encode(helpers.Response{
+			Error:   true,
+			Code:    500,
+			Message: fmt.Sprintf("Error fetching total accuracy: %s", err),
+		})
+		return
+	}
+
+	json.NewEncoder(w).Encode(struct {
+		GamesWithPlayers []models.GameWithPlayers `json:"gamesWithPlayers"`
+		TotalAccuracy    float64                  `json:"totalAccuracy"`
+	}{
+		GamesWithPlayers: gamesWithPlayers,
+		TotalAccuracy:    totalAccuracy,
+	})
 }
 
 // Route : '/nhl/shots/records?date=2025-02-23
