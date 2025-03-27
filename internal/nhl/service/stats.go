@@ -311,6 +311,12 @@ func GetPlayerShotStats(date string) ([]models.GameWithPlayers, error) {
 			if err != nil {
 				fmt.Println("Error fetching player past prediction accuracy:", err)
 			}
+
+			predictionRecord, err := dbRepository.GetPlayerPredictionRecord(player.PlayerId, &game.GameID)
+			if err != nil {
+				fmt.Println("Error fetching player prediction record:", err)
+			}
+			player.PredictionRecord = predictionRecord
 			return player
 		})
 

@@ -142,6 +142,8 @@ func StoreActualShots(predictionRecord models.PredictionRecord, actualShots int)
 func GetTotalAccuracy() (float64, error) {
 	query := `
 	SELECT AVG(successful) FROM game_predictions
+		WHERE validated_at IS NOT NULL
+		AND validated_at <= datetime('now', '+3 hours');
 	`
 
 	row := database.DB.QueryRow(query)
@@ -166,4 +168,23 @@ func GetPlayerPastPredictionAccuracy(playerID int) (float64, error) {
 		return 0, err
 	}
 	return accuracy, nil
+}
+
+func GetPlayerPredictionRecord(playerID int, gameID *int) (models.PredictionRecord, error) {
+	query := `
+	SELECT * FROM game_predictions
+	WHERE player_id = ?
+	`
+
+	if gameID != nil {
+		query += ` AND game_id = ?`
+	}
+
+	row := database.DB.QueryRow(query, playerID, gameID)
+	var predictionRecord models.PredictionRecord
+	err := row.Scan(&predictionRecord.ID, &predictionRecord.GameDate, &predictionRecord.GameID, &predictionRecord.GameTitle, &predictionRecord.AwayTeamAbbrev, &predictionRecord.AwayTeamID, &predictionRecord.HomeTeamAbbrev, &predictionRecord.HomeTeamID, &predictionRecord.PlayerID, &predictionRecord.PlayerName, &predictionRecord.PlayerTeamAbbrev, &predictionRecord.PlayerTeamID, &predictionRecord.PredictedShots, &predictionRecord.Confidence, &predictionRecord.ActualShots, &predictionRecord.Successful, &predictionRecord.CreatedAt, &predictionRecord.ValidatedAt)
+	if err != nil {
+		return models.PredictionRecord{}, err
+	}
+	return predictionRecord, nil
 }

@@ -21,21 +21,22 @@ type Game struct {
 }
 
 type PlayerStats struct {
-	PlayerId               int     `json:"playerId"`
-	Name                   string  `json:"name"`
-	Position               string  `json:"position"`
-	TeamAbbrev             string  `json:"teamAbbrev"`
-	TeamId                 int     `json:"teamId"`
-	ShotsLast5             []int   `json:"shotsLast5"`
-	AvgShotsLast5          float64 `json:"avgShotsLast5"`
-	ShotTrend              []int   `json:"shotTrend"`
-	AvgTOI                 float64 `json:"avgTOI"`
-	SeasonShotsPerGame     float64 `json:"seasonShotsPerGame"`
-	PredictedGameShots     float64 `json:"predictedGameShots"`
-	Confidence             float64 `json:"confidence"`
-	RestDays               int     `json:"restDays"`
-	Headshot               string  `json:"headshot"`
-	PastPredictionAccuracy float64 `json:"pastPredictionAccuracy"`
+	PlayerId               int              `json:"playerId"`
+	Name                   string           `json:"name"`
+	Position               string           `json:"position"`
+	TeamAbbrev             string           `json:"teamAbbrev"`
+	TeamId                 int              `json:"teamId"`
+	ShotsLast5             []int            `json:"shotsLast5"`
+	AvgShotsLast5          float64          `json:"avgShotsLast5"`
+	ShotTrend              []int            `json:"shotTrend"`
+	AvgTOI                 float64          `json:"avgTOI"`
+	SeasonShotsPerGame     float64          `json:"seasonShotsPerGame"`
+	PredictedGameShots     float64          `json:"predictedGameShots"`
+	Confidence             float64          `json:"confidence"`
+	RestDays               int              `json:"restDays"`
+	Headshot               string           `json:"headshot"`
+	PastPredictionAccuracy float64          `json:"pastPredictionAccuracy"`
+	PredictionRecord       PredictionRecord `json:"predictionRecord"`
 }
 
 type TeamStats struct {
