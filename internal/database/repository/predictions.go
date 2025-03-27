@@ -20,8 +20,8 @@ func StoreGamePredictions(game models.GameWithPlayers) error {
 		game_date, game_id, game_title,
 		away_team_abbrev, away_team_id, home_team_abbrev, home_team_id,
 		player_id, player_name, player_team_abbrev, player_team_id,
-		predicted_shots, confidence, created_at
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+		predicted_shots, confidence, created_at, model_version_id
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 
 	if err != nil {
 		tx.Rollback()
@@ -45,6 +45,7 @@ func StoreGamePredictions(game models.GameWithPlayers) error {
 			player.PredictedGameShots,
 			player.Confidence,
 			time.Now().Format("2006-01-02 15:04:05"),
+			player.ModelVersionID,
 		)
 
 		if err != nil {
@@ -62,7 +63,7 @@ func GetGamePredictionsForDate(date string) ([]models.PredictionRecord, error) {
 	SELECT id, game_date, game_id, game_title,
 	       away_team_abbrev, away_team_id, home_team_abbrev, home_team_id,
 	       player_id, player_name, player_team_abbrev, player_team_id,
-	       predicted_shots, confidence, actual_shots, successful, created_at, validated_at
+	       predicted_shots, confidence, actual_shots, successful, created_at, validated_at, model_version_id
 	FROM game_predictions
 	WHERE game_date = ?;`
 
@@ -95,6 +96,7 @@ func GetGamePredictionsForDate(date string) ([]models.PredictionRecord, error) {
 			&record.Successful,
 			&record.CreatedAt,
 			&record.ValidatedAt,
+			&record.ModelVersionID,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan error: %w", err)
@@ -172,19 +174,93 @@ func GetPlayerPastPredictionAccuracy(playerID int) (float64, error) {
 
 func GetPlayerPredictionRecord(playerID int, gameID *int) (models.PredictionRecord, error) {
 	query := `
-	SELECT * FROM game_predictions
+	SELECT id, game_date, game_id, game_title,
+	       away_team_abbrev, away_team_id, home_team_abbrev, home_team_id,
+	       player_id, player_name, player_team_abbrev, player_team_id,
+	       predicted_shots, confidence, actual_shots, successful, created_at, validated_at, model_version_id
+	FROM game_predictions
 	WHERE player_id = ?
 	`
 
+	args := []interface{}{playerID}
+
 	if gameID != nil {
 		query += ` AND game_id = ?`
+		args = append(args, *gameID)
 	}
 
-	row := database.DB.QueryRow(query, playerID, gameID)
+	query += ` ORDER BY created_at DESC LIMIT 1`
+
+	row := database.DB.QueryRow(query, args...)
 	var predictionRecord models.PredictionRecord
-	err := row.Scan(&predictionRecord.ID, &predictionRecord.GameDate, &predictionRecord.GameID, &predictionRecord.GameTitle, &predictionRecord.AwayTeamAbbrev, &predictionRecord.AwayTeamID, &predictionRecord.HomeTeamAbbrev, &predictionRecord.HomeTeamID, &predictionRecord.PlayerID, &predictionRecord.PlayerName, &predictionRecord.PlayerTeamAbbrev, &predictionRecord.PlayerTeamID, &predictionRecord.PredictedShots, &predictionRecord.Confidence, &predictionRecord.ActualShots, &predictionRecord.Successful, &predictionRecord.CreatedAt, &predictionRecord.ValidatedAt)
+	err := row.Scan(
+		&predictionRecord.ID,
+		&predictionRecord.GameDate,
+		&predictionRecord.GameID,
+		&predictionRecord.GameTitle,
+		&predictionRecord.AwayTeamAbbrev,
+		&predictionRecord.AwayTeamID,
+		&predictionRecord.HomeTeamAbbrev,
+		&predictionRecord.HomeTeamID,
+		&predictionRecord.PlayerID,
+		&predictionRecord.PlayerName,
+		&predictionRecord.PlayerTeamAbbrev,
+		&predictionRecord.PlayerTeamID,
+		&predictionRecord.PredictedShots,
+		&predictionRecord.Confidence,
+		&predictionRecord.ActualShots,
+		&predictionRecord.Successful,
+		&predictionRecord.CreatedAt,
+		&predictionRecord.ValidatedAt,
+		&predictionRecord.ModelVersionID,
+	)
 	if err != nil {
 		return models.PredictionRecord{}, err
 	}
 	return predictionRecord, nil
+}
+
+// GetModelAccuracy calculates the accuracy for a specific model version
+func GetModelAccuracy(modelVersionID int) (float64, error) {
+	query := `
+	SELECT AVG(successful) FROM game_predictions
+	WHERE validated_at IS NOT NULL
+	AND model_version_id = ?
+	`
+
+	row := database.DB.QueryRow(query, modelVersionID)
+	var accuracy float64
+	err := row.Scan(&accuracy)
+	if err != nil {
+		return 0, err
+	}
+	return accuracy, nil
+}
+
+// GetAllModelsAccuracy returns the accuracy for all model versions
+func GetAllModelsAccuracy() (map[int]float64, error) {
+	query := `
+	SELECT model_version_id, AVG(successful) as accuracy
+	FROM game_predictions
+	WHERE validated_at IS NOT NULL
+	GROUP BY model_version_id
+	`
+
+	rows, err := database.DB.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	results := make(map[int]float64)
+	for rows.Next() {
+		var modelID int
+		var accuracy float64
+		if err := rows.Scan(&modelID, &accuracy); err != nil {
+			return nil, err
+		}
+		results[modelID] = accuracy
+	}
+
+	return results, rows.Err()
 }

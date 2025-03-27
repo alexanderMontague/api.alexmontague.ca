@@ -9,6 +9,7 @@ import (
 	"api.alexmontague.ca/data"
 	"api.alexmontague.ca/internal/cron"
 	"api.alexmontague.ca/internal/database"
+	"api.alexmontague.ca/internal/nhl/service"
 	"api.alexmontague.ca/middleware"
 	"github.com/friendsofgo/graphiql"
 	"github.com/gorilla/mux"
@@ -70,5 +71,14 @@ func main() {
 	}
 
 	data.SeedData()
+
+	// Initialize model prediction system
+	go func() {
+		// Ensure models are initialized on startup
+		service.InitializeModels()
+		// Set the active model version to use for predictions
+		service.SetActiveModelVersion(1) // Using the original model as default
+	}()
+
 	handleRequests()
 }

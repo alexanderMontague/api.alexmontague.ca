@@ -37,6 +37,7 @@ type PlayerStats struct {
 	Headshot               string           `json:"headshot"`
 	PastPredictionAccuracy float64          `json:"pastPredictionAccuracy"`
 	PredictionRecord       PredictionRecord `json:"predictionRecord"`
+	ModelVersionID         int              `json:"modelVersionId"`
 }
 
 type TeamStats struct {
@@ -144,4 +145,5 @@ type PredictionRecord struct {
 	Successful       *bool   `json:"successful,omitempty"`
 	CreatedAt        string  `json:"created_at"`
 	ValidatedAt      *string `json:"validated_at,omitempty"`
+	ModelVersionID   int     `json:"model_version_id"`
 }
