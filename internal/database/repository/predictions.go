@@ -143,7 +143,7 @@ func StoreActualShots(predictionRecord models.PredictionRecord, actualShots int)
 
 func GetTotalAccuracy() (float64, error) {
 	query := `
-	SELECT AVG(successful) FROM game_predictions
+	SELECT COALESCE(AVG(successful), 0) FROM game_predictions
 		WHERE validated_at IS NOT NULL
 		AND validated_at <= datetime('now', '+3 hours');
 	`
@@ -159,7 +159,7 @@ func GetTotalAccuracy() (float64, error) {
 
 func GetPlayerPastPredictionAccuracy(playerID int) (float64, error) {
 	query := `
-	SELECT AVG(successful) FROM game_predictions
+	SELECT COALESCE(AVG(successful), 0) FROM game_predictions
 	WHERE player_id = ?
 	`
 
@@ -263,4 +263,209 @@ func GetAllModelsAccuracy() (map[int]float64, error) {
 	}
 
 	return results, rows.Err()
+}
+
+// StoreModelPredictions stores predictions from multiple models for a game
+func StoreModelPredictions(gameDate string, modelPredictions map[int][]models.GameWithPlayers) error {
+	tx, err := database.DB.Begin()
+	if err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(`
+	INSERT OR REPLACE INTO model_predictions (
+		game_date, game_id, game_title,
+		away_team_abbrev, away_team_id, home_team_abbrev, home_team_id,
+		player_id, player_name, player_team_abbrev, player_team_id,
+		model_version_id, predicted_shots, confidence, created_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	defer stmt.Close()
+
+	// Current timestamp for all records
+	currentTime := time.Now().Format("2006-01-02 15:04:05")
+
+	// Process predictions for each model
+	for modelID, games := range modelPredictions {
+		for _, game := range games {
+			for _, player := range game.Players {
+				_, err = stmt.Exec(
+					gameDate,
+					game.GameID,
+					game.Title,
+					game.AwayTeam.Abbrev,
+					game.AwayTeam.Id,
+					game.HomeTeam.Abbrev,
+					game.HomeTeam.Id,
+					player.PlayerId,
+					player.Name,
+					player.TeamAbbrev,
+					player.TeamId,
+					modelID,
+					player.PredictedGameShots,
+					player.Confidence,
+					currentTime,
+				)
+
+				if err != nil {
+					tx.Rollback()
+					return err
+				}
+			}
+		}
+	}
+
+	return tx.Commit()
+}
+
+// UpdateModelPredictionsWithActual updates the model predictions with actual shot data
+func UpdateModelPredictionsWithActual(gameID int, playerID int, actualShots int) error {
+	tx, err := database.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Get all model predictions for this game and player
+	rows, err := tx.Query(`
+		SELECT id, predicted_shots
+		FROM model_predictions
+		WHERE game_id = ? AND player_id = ? AND actual_shots IS NULL`,
+		gameID, playerID)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	// Update each prediction
+	updateStmt, err := tx.Prepare(`
+		UPDATE model_predictions
+		SET actual_shots = ?, successful = ?, validated_at = ?
+		WHERE id = ?
+	`)
+	if err != nil {
+		return err
+	}
+	defer updateStmt.Close()
+
+	currentTime := time.Now().Format("2006-01-02 15:04:05")
+
+	for rows.Next() {
+		var id int
+		var predictedShots float64
+		err := rows.Scan(&id, &predictedShots)
+		if err != nil {
+			return err
+		}
+
+		// A prediction is successful if the player gets at least the predicted number of shots
+		successful := actualShots >= int(predictedShots)
+
+		_, err = updateStmt.Exec(actualShots, successful, currentTime, id)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit()
+}
+
+// GetModelPredictionsForDate retrieves all model predictions for a specific date
+func GetModelPredictionsForDate(date string) (map[int][]models.PredictionRecord, error) {
+	query := `
+	SELECT id, game_date, game_id, game_title,
+	       away_team_abbrev, away_team_id, home_team_abbrev, home_team_id,
+	       player_id, player_name, player_team_abbrev, player_team_id,
+	       predicted_shots, confidence, actual_shots, successful, created_at, validated_at, model_version_id
+	FROM model_predictions
+	WHERE game_date = ?
+	ORDER BY model_version_id, game_id, player_team_id, confidence DESC;`
+
+	rows, err := database.DB.Query(query, date)
+	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+	defer rows.Close()
+
+	// Map to store predictions by model ID
+	result := make(map[int][]models.PredictionRecord)
+
+	for rows.Next() {
+		var record models.PredictionRecord
+		err := rows.Scan(
+			&record.ID,
+			&record.GameDate,
+			&record.GameID,
+			&record.GameTitle,
+			&record.AwayTeamAbbrev,
+			&record.AwayTeamID,
+			&record.HomeTeamAbbrev,
+			&record.HomeTeamID,
+			&record.PlayerID,
+			&record.PlayerName,
+			&record.PlayerTeamAbbrev,
+			&record.PlayerTeamID,
+			&record.PredictedShots,
+			&record.Confidence,
+			&record.ActualShots,
+			&record.Successful,
+			&record.CreatedAt,
+			&record.ValidatedAt,
+			&record.ModelVersionID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan error: %w", err)
+		}
+
+		result[record.ModelVersionID] = append(result[record.ModelVersionID], record)
+	}
+
+	return result, nil
+}
+
+// GetModelComparisonStats returns accuracy statistics for all models
+func GetModelComparisonStats() (map[int]models.ModelAccuracyStats, error) {
+	query := `
+	SELECT
+		model_version_id,
+		COUNT(*) as total_predictions,
+		SUM(CASE WHEN successful = 1 THEN 1 ELSE 0 END) as successful_predictions,
+		AVG(CASE WHEN successful = 1 THEN 1.0 ELSE 0.0 END) as accuracy,
+		AVG(ABS(predicted_shots - actual_shots)) as avg_error
+	FROM model_predictions
+	WHERE validated_at IS NOT NULL
+	GROUP BY model_version_id
+	ORDER BY accuracy DESC;`
+
+	rows, err := database.DB.Query(query)
+	if err != nil {
+		return nil, fmt.Errorf("query error: %w", err)
+	}
+	defer rows.Close()
+
+	stats := make(map[int]models.ModelAccuracyStats)
+
+	for rows.Next() {
+		var modelID int
+		var modelStats models.ModelAccuracyStats
+
+		err := rows.Scan(
+			&modelID,
+			&modelStats.TotalPredictions,
+			&modelStats.SuccessfulPredictions,
+			&modelStats.Accuracy,
+			&modelStats.AvgError,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("scan error: %w", err)
+		}
+
+		stats[modelID] = modelStats
+	}
+
+	return stats, nil
 }

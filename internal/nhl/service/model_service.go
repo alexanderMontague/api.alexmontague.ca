@@ -1,8 +1,11 @@
 package service
 
 import (
+	"fmt"
+	"sort"
 	"sync"
 
+	dbRepository "api.alexmontague.ca/internal/database/repository"
 	"api.alexmontague.ca/internal/nhl/models"
 	"api.alexmontague.ca/internal/nhl/repository"
 )
@@ -27,6 +30,7 @@ var (
 )
 
 // InitializeModels loads the default models on startup
+// This is called from main.go and ensures models are only initialized once
 func InitializeModels() {
 	mu.Lock()
 	defer mu.Unlock()
@@ -53,6 +57,7 @@ func SetActiveModelVersion(versionID int) {
 }
 
 // GetModelVersion returns a specific model version by ID
+// Falls back to default model if requested model is not found
 func GetModelVersion(versionID int) (*models.ModelVersion, error) {
 	// Initialize models if not already done
 	if !initialized {
@@ -62,47 +67,22 @@ func GetModelVersion(versionID int) (*models.ModelVersion, error) {
 	mu.RLock()
 	defer mu.RUnlock()
 
+	// Try to find the requested model
 	for _, model := range predictionModels {
 		if model.ID == versionID {
 			return &model, nil
 		}
 	}
 
-	// If model not found, return the default model
+	// If model not found, return the default model (one we know exists)
 	for _, model := range predictionModels {
 		if model.ID == DEFAULT_MODEL_VERSION {
 			return &model, nil
 		}
 	}
 
-	// If even default model not found, return the first available
-	if len(predictionModels) > 0 {
-		return &predictionModels[0], nil
-	}
-
 	// Create a minimal default model if nothing else available
-	return &models.ModelVersion{
-		ID:                  DEFAULT_MODEL_VERSION,
-		CalculationStrategy: models.StandardCalculation,
-		Parameters: models.ModelParameters{
-			RecentPerformanceWeight: 0.7,
-			SeasonPerformanceWeight: 0.3,
-			GamePaceExponent:        1.0,
-			TeamOffenseExponent:     0.8,
-			TeamDefenseExponent:     0.6,
-			DefensePositionFactor:   0.75,
-			BackToBackFactor:        0.9,
-			OneRestDayFactor:        0.95,
-			FourPlusRestDayFactor:   1.1,
-			ShotScoreMultiplier:     4.0,
-			TOIBaseMultiplier:       3.0,
-			TOIBonusThreshold:       18.0,
-			TOIBonusMultiplier:      1.0,
-			TrendUpwardScore:        1.5,
-			TrendImprovementScore:   0.75,
-			DefenseConfidenceFactor: 0.9,
-		},
-	}, nil
+	return createDefaultModel(), nil
 }
 
 // GetAllModels returns all available model versions
@@ -134,8 +114,8 @@ func CalculateWithAllModels(date string) (map[int][]models.GameWithPlayers, erro
 	copy(allModels, predictionModels)
 	mu.RUnlock()
 
-	// Fetch game data needed for all models
-	games, err := repository.GetUpcomingGames(date)
+	// Fetch game data only once for reuse
+	games, teamStats, restDays, err := fetchGameDataForDate(date)
 	if err != nil {
 		return nil, err
 	}
@@ -144,22 +124,13 @@ func CalculateWithAllModels(date string) (map[int][]models.GameWithPlayers, erro
 		return map[int][]models.GameWithPlayers{}, nil
 	}
 
-	teamStats, err := repository.GetAllTeamStats(games[0].Season)
-	if err != nil {
-		return nil, err
-	}
-
-	restDays, err := repository.GetTeamsRest(date, games)
-	if err != nil {
-		return nil, err
-	}
-
 	// Calculate predictions with each model
 	results := make(map[int][]models.GameWithPlayers)
 
 	for _, model := range allModels {
 		modelResults, err := ModelPredictionForGames(date, model, games, teamStats, restDays)
 		if err != nil {
+			fmt.Println("Failed to model prediction for model version:", model.ID, err)
 			continue // Skip failed models
 		}
 		results[model.ID] = modelResults
@@ -182,10 +153,10 @@ func ModelPredictionForGames(
 	var err error
 
 	// Use cached data if provided, otherwise fetch from repository
-	if cachedGames != nil {
+	if len(cachedGames) > 0 {
 		games = cachedGames
 	} else {
-		games, err = repository.GetUpcomingGames(date)
+		games, teamStats, restDays, err = fetchGameDataForDate(date)
 		if err != nil {
 			return nil, err
 		}
@@ -197,7 +168,7 @@ func ModelPredictionForGames(
 
 	if cachedTeamStats != nil {
 		teamStats = cachedTeamStats
-	} else {
+	} else if teamStats == nil {
 		teamStats, err = repository.GetAllTeamStats(games[0].Season)
 		if err != nil {
 			return nil, err
@@ -206,7 +177,7 @@ func ModelPredictionForGames(
 
 	if cachedRestDays != nil {
 		restDays = cachedRestDays
-	} else {
+	} else if restDays == nil {
 		restDays, err = repository.GetTeamsRest(date, games)
 		if err != nil {
 			return nil, err
@@ -249,11 +220,91 @@ func ModelPredictionForGames(
 
 // Helper to sort players by confidence
 func sortPlayersByConfidence(players []models.PlayerStats) {
-	for i := 0; i < len(players)-1; i++ {
-		for j := i + 1; j < len(players); j++ {
-			if players[j].Confidence > players[i].Confidence {
-				players[i], players[j] = players[j], players[i]
+	sort.Slice(players, func(i, j int) bool {
+		return players[i].Confidence > players[j].Confidence
+	})
+}
+
+// Helper to fetch game data for a specific date
+func fetchGameDataForDate(date string) ([]models.Game, []models.TeamStats, map[int]int, error) {
+	games, err := repository.GetUpcomingGames(date)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	if len(games) == 0 {
+		return games, nil, nil, nil
+	}
+
+	teamStats, err := repository.GetAllTeamStats(games[0].Season)
+	if err != nil {
+		return games, nil, nil, err
+	}
+
+	restDays, err := repository.GetTeamsRest(date, games)
+	if err != nil {
+		return games, teamStats, nil, err
+	}
+
+	return games, teamStats, restDays, nil
+}
+
+// createDefaultModel provides a minimal default model when no others are available
+func createDefaultModel() *models.ModelVersion {
+	return &models.ModelVersion{
+		ID:                  DEFAULT_MODEL_VERSION,
+		Name:                "Default Model",
+		Description:         "Basic shot prediction model",
+		CalculationStrategy: models.StandardCalculation,
+		Parameters: models.ModelParameters{
+			RecentPerformanceWeight: 0.7,
+			SeasonPerformanceWeight: 0.3,
+			GamePaceExponent:        1.0,
+			TeamOffenseExponent:     0.8,
+			TeamDefenseExponent:     0.6,
+			DefensePositionFactor:   0.75,
+			BackToBackFactor:        0.9,
+			OneRestDayFactor:        0.95,
+			FourPlusRestDayFactor:   1.1,
+			ShotScoreMultiplier:     4.0,
+			TOIBaseMultiplier:       3.0,
+			TOIBonusThreshold:       18.0,
+			TOIBonusMultiplier:      1.0,
+			TrendUpwardScore:        1.5,
+			TrendImprovementScore:   0.75,
+			DefenseConfidenceFactor: 0.9,
+		},
+	}
+}
+
+// RunAndStoreAllModelPredictions runs all models and stores their predictions in the database
+func RunAndStoreAllModelPredictions(date string) error {
+	// Initialize models if not already done
+	if !initialized {
+		InitializeModels()
+	}
+
+	// Get predictions from all models
+	modelPredictions, err := CalculateWithAllModels(date)
+	if err != nil {
+		return fmt.Errorf("failed to calculate predictions: %w", err)
+	}
+
+	// Store all model predictions
+	err = dbRepository.StoreModelPredictions(date, modelPredictions)
+	if err != nil {
+		return fmt.Errorf("failed to store model predictions: %w", err)
+	}
+
+	// Also store the active model's prediction in the original table for backward compatibility
+	if activeModelPredictions, ok := modelPredictions[activeModelVersion]; ok && len(activeModelPredictions) > 0 {
+		for _, game := range activeModelPredictions {
+			err = dbRepository.StoreGamePredictions(game)
+			if err != nil {
+				return fmt.Errorf("failed to store active model predictions: %w", err)
 			}
 		}
 	}
+
+	return nil
 }

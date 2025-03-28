@@ -306,3 +306,11 @@ type ModelPredictionRecord struct {
 	ActualShots    int
 	PredictedShots float64
 }
+
+// ModelAccuracyStats holds aggregated statistics about a model's performance
+type ModelAccuracyStats struct {
+	TotalPredictions      int
+	SuccessfulPredictions int
+	Accuracy              float64
+	AvgError              float64
+}

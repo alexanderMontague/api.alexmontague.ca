@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 
 	"api.alexmontague.ca/helpers"
-	"api.alexmontague.ca/internal/cron"
 	dbRepository "api.alexmontague.ca/internal/database/repository"
 	"api.alexmontague.ca/internal/nhl/models"
 	"api.alexmontague.ca/internal/nhl/repository"
@@ -81,31 +80,35 @@ func GetPlayerShotRecords(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(predictionRecords)
 }
 
-// Route : '/nhl/shots/seed?date=2025-02-23
+// SeedAndValidatePredictions saves player predictions and updates with actual shots
+// Route : '/nhl/shots/seed'
 // Type  : 'GET'
-// debug route to seed and validate predictions
 func SeedAndValidatePredictions(w http.ResponseWriter, r *http.Request) {
+	// Set content type
 	w.Header().Set("Content-Type", "application/json")
 
-	date := r.URL.Query().Get("date")
+	// Check for a specific date
+	query := r.URL.Query()
+	dateParam := query.Get("date")
+	if dateParam == "" {
+		dateParam = helpers.GetCurrentESTDate()
+	}
 
-	if !helpers.IsRunningLocally() {
-		json.NewEncoder(w).Encode(helpers.Response{
-			Error:   true,
-			Code:    400,
-			Message: "This route is only available when running locally",
+	// Run predictions for all models for this date
+	err := service.RunAndStoreAllModelPredictions(dateParam)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"error":    err.Error(),
+			"gameDate": dateParam,
 		})
 		return
 	}
 
-	fmt.Println("[nhl/shots/seed] Fetching shot records for date:", date)
-
-	cron.FetchDailyPredictions(&date)
-	cron.ValidateCompletedGames(&date)
-
-	json.NewEncoder(w).Encode(helpers.Response{
-		Error:   false,
-		Code:    200,
-		Message: "Predictions seeded and validated",
+	// Return success response
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":  true,
+		"message":  "Predictions generated and stored for all models",
+		"gameDate": dateParam,
 	})
 }

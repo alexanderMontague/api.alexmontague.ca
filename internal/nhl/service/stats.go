@@ -88,6 +88,45 @@ func getTeamStatsById(teamId int, allTeamStats []models.TeamStats) *models.TeamS
 	return nil
 }
 
+// Common helper functions for shot prediction calculations
+func getTeamFactors(
+	currentTeam *models.TeamStats,
+	opposingTeam *models.TeamStats,
+	leagueShotAverage float64,
+	params models.ModelParameters,
+) (float64, float64, float64) {
+	// Game pace factor
+	gamePaceFactor := math.Pow((currentTeam.ShotsForPerGame+opposingTeam.ShotsAgainstPerGame)/(2*leagueShotAverage), params.GamePaceExponent)
+
+	// Team strength adjustments
+	teamOffenseFactor := math.Pow(currentTeam.ShotsForPerGame/leagueShotAverage, params.TeamOffenseExponent)
+	teamDefenseFactor := math.Pow(opposingTeam.ShotsAgainstPerGame/leagueShotAverage, params.TeamDefenseExponent)
+
+	return gamePaceFactor, teamOffenseFactor, teamDefenseFactor
+}
+
+func getRestFactor(currentTeamId int, restDays map[int]int, params models.ModelParameters) float64 {
+	restFactor := 1.0
+	if days, exists := restDays[currentTeamId]; exists {
+		switch {
+		case days == 0: // Back-to-back games
+			restFactor = params.BackToBackFactor
+		case days == 1:
+			restFactor = params.OneRestDayFactor
+		case days >= 4:
+			restFactor = params.FourPlusRestDayFactor
+		}
+	}
+	return restFactor
+}
+
+func getPositionFactor(position string, params models.ModelParameters) float64 {
+	if position == "D" {
+		return params.DefensePositionFactor
+	}
+	return 1.0
+}
+
 // Standard calculation method
 func calculatePredictedShotsStandard(
 	playerStats models.PlayerDetail,
@@ -107,21 +146,12 @@ func calculatePredictedShotsStandard(
 	// Weight recent performance more heavily
 	basePrediction := avgShotsLast5*params.RecentPerformanceWeight + seasonShotsPerGame*params.SeasonPerformanceWeight
 
-	// Team pace factors
+	// Get common factors
 	leagueShotAverage := getLeagueShotAverage(teamStats)
-	gamePaceFactor := math.Pow((currentTeam.ShotsForPerGame+opposingTeam.ShotsAgainstPerGame)/(2*leagueShotAverage), params.GamePaceExponent)
+	gamePaceFactor, teamOffenseFactor, teamDefenseFactor := getTeamFactors(currentTeam, opposingTeam, leagueShotAverage, params)
+	positionFactor := getPositionFactor(playerStats.Position, params)
 
-	// Team strength adjustments
-	teamOffenseFactor := math.Pow(currentTeam.ShotsForPerGame/leagueShotAverage, params.TeamOffenseExponent)
-	teamDefenseFactor := math.Pow(opposingTeam.ShotsAgainstPerGame/leagueShotAverage, params.TeamDefenseExponent)
-
-	// Position-based adjustment
-	positionFactor := 1.0
-	if playerStats.Position == "D" {
-		positionFactor = params.DefensePositionFactor
-	}
-
-	// Calculate ice time factor (assuming 20 mins is max TOI)
+	// Calculate ice time factor
 	avgTOIMinutes := calculateAvgTOIMinutes(playerStats.Last5Games)
 	icetimeFactor := math.Min(avgTOIMinutes/20.0, 1.0)
 
@@ -133,20 +163,8 @@ func calculatePredictedShotsStandard(
 		positionFactor *
 		icetimeFactor
 
-	// Rest factor (1.0 is baseline, increases with rest, decreases with back-to-back)
-	restFactor := 1.0
-	if days, exists := restDays[playerStats.CurrentTeamId]; exists {
-		switch {
-		case days == 0: // Back-to-back games
-			restFactor = params.BackToBackFactor
-		case days == 1:
-			restFactor = params.OneRestDayFactor
-		case days >= 4:
-			restFactor = params.FourPlusRestDayFactor
-		}
-	}
-
-	// Apply rest factor to final prediction
+	// Apply rest factor
+	restFactor := getRestFactor(playerStats.CurrentTeamId, restDays, params)
 	adjustedPrediction = adjustedPrediction * restFactor
 
 	return math.Round(adjustedPrediction*10) / 10
@@ -184,19 +202,10 @@ func calculatePredictedShotsWeightedRecency(
 	// Weight recent weighted performance more heavily than season stats
 	basePrediction := weightedRecentPerformance*params.RecentPerformanceWeight + seasonShotsPerGame*params.SeasonPerformanceWeight
 
-	// Team pace factors
+	// Get common factors
 	leagueShotAverage := getLeagueShotAverage(teamStats)
-	gamePaceFactor := math.Pow((currentTeam.ShotsForPerGame+opposingTeam.ShotsAgainstPerGame)/(2*leagueShotAverage), params.GamePaceExponent)
-
-	// Team strength adjustments
-	teamOffenseFactor := math.Pow(currentTeam.ShotsForPerGame/leagueShotAverage, params.TeamOffenseExponent)
-	teamDefenseFactor := math.Pow(opposingTeam.ShotsAgainstPerGame/leagueShotAverage, params.TeamDefenseExponent)
-
-	// Position-based adjustment
-	positionFactor := 1.0
-	if playerStats.Position == "D" {
-		positionFactor = params.DefensePositionFactor
-	}
+	gamePaceFactor, teamOffenseFactor, teamDefenseFactor := getTeamFactors(currentTeam, opposingTeam, leagueShotAverage, params)
+	positionFactor := getPositionFactor(playerStats.Position, params)
 
 	// Calculate ice time factor
 	avgTOIMinutes := calculateAvgTOIMinutes(playerStats.Last5Games)
@@ -210,20 +219,8 @@ func calculatePredictedShotsWeightedRecency(
 		positionFactor *
 		icetimeFactor
 
-	// Rest factor
-	restFactor := 1.0
-	if days, exists := restDays[playerStats.CurrentTeamId]; exists {
-		switch {
-		case days == 0:
-			restFactor = params.BackToBackFactor
-		case days == 1:
-			restFactor = params.OneRestDayFactor
-		case days >= 4:
-			restFactor = params.FourPlusRestDayFactor
-		}
-	}
-
 	// Apply rest factor
+	restFactor := getRestFactor(playerStats.CurrentTeamId, restDays, params)
 	adjustedPrediction = adjustedPrediction * restFactor
 
 	return math.Round(adjustedPrediction*10) / 10
@@ -241,12 +238,6 @@ func calculatePredictedShotsTOIDriven(
 	avgTOIMinutes := calculateAvgTOIMinutes(playerStats.Last5Games)
 
 	// Base prediction starts from TOI rather than shot averages
-	// Formula: adjust shot expectations based primarily on TOI
-	// Players with 20+ minutes typically get 3-4 shots per game (first line/top pair)
-	// Players with 15-20 minutes typically get 2-3 shots per game (second line/pair)
-	// Players with 10-15 minutes typically get 1-2 shots per game (third line/pair)
-	// Players with <10 minutes typically get 0-1 shots per game (fourth line/bottom pair)
-
 	baseTOIPrediction := 0.0
 	if avgTOIMinutes >= 20.0 {
 		baseTOIPrediction = 3.5
@@ -258,18 +249,20 @@ func calculatePredictedShotsTOIDriven(
 		baseTOIPrediction = 0.7
 	}
 
-	// Position adjustment is more significant in this model
+	// TOI-specific position adjustment
+	positionFactor := 1.0
 	if playerStats.Position == "D" {
 		if avgTOIMinutes >= 20.0 {
 			// Top pair defensemen still get shots
-			baseTOIPrediction *= params.DefensePositionFactor
+			positionFactor = params.DefensePositionFactor
 		} else {
 			// Lower pair defensemen get fewer shots
-			baseTOIPrediction *= (params.DefensePositionFactor - 0.1)
+			positionFactor = params.DefensePositionFactor - 0.1
 		}
 	}
+	baseTOIPrediction *= positionFactor
 
-	// Blend TOI prediction with actual shot history, but heavily favor TOI
+	// Blend TOI prediction with actual shot history
 	toiWeight := 0.7         // 70% TOI-based prediction
 	shotHistoryWeight := 0.3 // 30% shot history
 
@@ -285,26 +278,12 @@ func calculatePredictedShotsTOIDriven(
 		return math.Round(blendedBasePrediction*10) / 10
 	}
 
-	// Team pace factors with reduced impact
+	// Get common factors with reduced impact
 	leagueShotAverage := getLeagueShotAverage(teamStats)
-	gamePaceFactor := math.Pow((currentTeam.ShotsForPerGame+opposingTeam.ShotsAgainstPerGame)/(2*leagueShotAverage), params.GamePaceExponent)
+	gamePaceFactor, teamOffenseFactor, teamDefenseFactor := getTeamFactors(currentTeam, opposingTeam, leagueShotAverage, params)
 
-	// Team strength adjustments with reduced impact
-	teamOffenseFactor := math.Pow(currentTeam.ShotsForPerGame/leagueShotAverage, params.TeamOffenseExponent)
-	teamDefenseFactor := math.Pow(opposingTeam.ShotsAgainstPerGame/leagueShotAverage, params.TeamDefenseExponent)
-
-	// Rest day impact with reduced factor
-	restFactor := 1.0
-	if days, exists := restDays[playerStats.CurrentTeamId]; exists {
-		switch {
-		case days == 0:
-			restFactor = params.BackToBackFactor
-		case days == 1:
-			restFactor = params.OneRestDayFactor
-		case days >= 4:
-			restFactor = params.FourPlusRestDayFactor
-		}
-	}
+	// Rest factor
+	restFactor := getRestFactor(playerStats.CurrentTeamId, restDays, params)
 
 	// Final prediction with team factors having less impact
 	adjustedPrediction := blendedBasePrediction *
@@ -335,18 +314,13 @@ func calculatePredictedShotsMatchupFocused(
 	// Start with standard calculation weights but emphasize matchup
 	basePrediction := avgShotsLast5*params.RecentPerformanceWeight + seasonShotsPerGame*params.SeasonPerformanceWeight
 
-	// Enhanced team pace factor - emphasize matchup more
+	// Get common factors with enhanced significance
 	leagueShotAverage := getLeagueShotAverage(teamStats)
-	gamePaceFactor := math.Pow((currentTeam.ShotsForPerGame+opposingTeam.ShotsAgainstPerGame)/(2*leagueShotAverage), params.GamePaceExponent)
+	gamePaceFactor, teamOffenseFactor, teamDefenseFactor := getTeamFactors(currentTeam, opposingTeam, leagueShotAverage, params)
 
-	// Enhanced team strength adjustments
-	teamOffenseFactor := math.Pow(currentTeam.ShotsForPerGame/leagueShotAverage, params.TeamOffenseExponent)
-	teamDefenseFactor := math.Pow(opposingTeam.ShotsAgainstPerGame/leagueShotAverage, params.TeamDefenseExponent)
-
-	// Home ice advantage factor (if player's team is home)
+	// Home ice advantage factor
 	homeIceFactor := 1.0
 	if playerStats.CurrentTeamId == playerStats.OpposingTeamId {
-		// Opposing team ID will be different from current team ID for away games
 		homeIceFactor = params.HomeIceAdvantageFactor
 	}
 
@@ -355,32 +329,20 @@ func calculatePredictedShotsMatchupFocused(
 	if playerStats.Position == "D" {
 		// Check if opposing team shoots a lot
 		if opposingTeam.ShotsForPerGame > leagueShotAverage {
-			// Defensemen might block more shots against high-volume shooting teams
 			positionFactor = params.DefensePositionFactor + 0.05
 		} else {
 			positionFactor = params.DefensePositionFactor
 		}
 	}
 
-	// Calculate ice time factor as in standard model
+	// Calculate ice time factor
 	avgTOIMinutes := calculateAvgTOIMinutes(playerStats.Last5Games)
 	icetimeFactor := math.Min(avgTOIMinutes/20.0, 1.0)
 
-	// Enhanced rest day factors with more significance
-	restFactor := 1.0
-	if days, exists := restDays[playerStats.CurrentTeamId]; exists {
-		switch {
-		case days == 0:
-			restFactor = params.BackToBackFactor
-		case days == 1:
-			restFactor = params.OneRestDayFactor
-		case days >= 4:
-			restFactor = params.FourPlusRestDayFactor
-		}
-	}
+	// Enhanced rest day factors
+	restFactor := getRestFactor(playerStats.CurrentTeamId, restDays, params)
 
 	// Team streak factor (placeholder - would require additional data)
-	// This represents how a team's winning/losing streak might impact shot volume
 	streakFactor := 1.0 + (params.StreakImpactFactor * 0) // Neutral for now
 
 	// Combine all factors with enhanced matchup emphasis
@@ -411,7 +373,10 @@ func calculatePredictedShots(
 	for _, shots := range shotsLast5 {
 		totalShots += float64(shots)
 	}
-	avgShotsLast5 := totalShots / float64(len(shotsLast5))
+	avgShotsLast5 := 0.0
+	if len(shotsLast5) > 0 {
+		avgShotsLast5 = totalShots / float64(len(shotsLast5))
+	}
 
 	// Route to appropriate calculation method based on strategy
 	switch model.CalculationStrategy {
@@ -429,6 +394,39 @@ func calculatePredictedShots(
 	}
 }
 
+// extractPlayerStats extracts common player statistics needed for prediction
+func extractPlayerStats(player models.PlayerDetail) ([]int, float64, float64, []int, float64) {
+	// Calculate last 5 games shots
+	var totalShots float64
+	var shotsLast5 []int
+	var shotTrend []int
+
+	for i, game := range player.Last5Games {
+		totalShots += float64(game.Shots)
+		shotsLast5 = append(shotsLast5, game.Shots)
+		if i >= 2 {
+			shotTrend = append(shotTrend, game.Shots)
+		}
+	}
+
+	avgShotsLast5 := 0.0
+	if len(player.Last5Games) > 0 {
+		avgShotsLast5 = totalShots / float64(len(player.Last5Games))
+	}
+
+	// Calculate average TOI
+	avgTOI := calculateAvgTOIMinutes(player.Last5Games)
+
+	// Calculate season shots per game
+	seasonShotsPerGame := float64(0)
+	if player.FeaturedStats.RegularSeason.SubSeason.GamesPlayed > 0 {
+		seasonShotsPerGame = float64(player.FeaturedStats.RegularSeason.SubSeason.Shots) /
+			float64(player.FeaturedStats.RegularSeason.SubSeason.GamesPlayed)
+	}
+
+	return shotsLast5, avgShotsLast5, seasonShotsPerGame, shotTrend, avgTOI
+}
+
 // CalculateShootingStatsWithModel calculates shooting stats using the specified model version
 func CalculateShootingStatsWithModel(players []models.PlayerDetail, teamStats []models.TeamStats, restDays map[int]int, model models.ModelVersion) []models.PlayerStats {
 	var stats []models.PlayerStats
@@ -444,38 +442,10 @@ func CalculateShootingStatsWithModel(players []models.PlayerDetail, teamStats []
 			continue
 		}
 
-		// Calculate last 5 games shots
-		var totalShots float64
-		var shotsLast5 []int
-		var shotTrend []int
-		for i, game := range player.Last5Games {
-			totalShots += float64(game.Shots)
-			shotsLast5 = append(shotsLast5, game.Shots)
-			if i >= 2 {
-				shotTrend = append(shotTrend, game.Shots)
-			}
-		}
-		avgShotsLast5 := totalShots / 5
+		// Extract player stats
+		shotsLast5, avgShotsLast5, seasonShotsPerGame, shotTrend, avgTOI := extractPlayerStats(player)
 
-		// Calculate average TOI
-		var totalTOI float64
-		for _, game := range player.Last5Games {
-			timeParts := strings.Split(game.TOI, ":")
-			if len(timeParts) == 2 {
-				minutes, _ := strconv.Atoi(timeParts[0])
-				seconds, _ := strconv.Atoi(timeParts[1])
-				totalTOI += float64(minutes) + float64(seconds)/60
-			}
-		}
-		avgTOI := totalTOI / 5
-
-		// Calculate season shots per game
-		seasonShotsPerGame := float64(0)
-		if player.FeaturedStats.RegularSeason.SubSeason.GamesPlayed > 0 {
-			seasonShotsPerGame = float64(player.FeaturedStats.RegularSeason.SubSeason.Shots) /
-				float64(player.FeaturedStats.RegularSeason.SubSeason.GamesPlayed)
-		}
-
+		// Calculate prediction using the specified model
 		predictedGameShots := calculatePredictedShots(player, shotsLast5, seasonShotsPerGame, teamStats, restDays, model)
 
 		// Only include players meeting minimum shot threshold
@@ -514,8 +484,11 @@ func CalculateShootingStats(players []models.PlayerDetail, teamStats []models.Te
 	model, err := GetModelVersion(GetActiveModelVersion())
 	if err != nil {
 		// Fallback to default model parameters if no model is found
+		// Use a simple default model
 		defaultModel := models.ModelVersion{
-			ID:                  0,
+			ID:                  DEFAULT_MODEL_VERSION,
+			Name:                "Default Model",
+			Description:         "Basic shot prediction model",
 			CalculationStrategy: models.StandardCalculation,
 			Parameters: models.ModelParameters{
 				RecentPerformanceWeight: 0.7,
@@ -581,60 +554,6 @@ func calculateVariance(numbers []int) float64 {
 	variance = variance / float64(len(numbers))
 
 	return variance
-}
-
-// GetGamesForModelPrediction gets upcoming games with player predictions using a specific model
-func GetGamesForModelPrediction(date string, model models.ModelVersion) ([]models.GameWithPlayers, error) {
-	games, err := repository.GetUpcomingGames(date)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(games) == 0 {
-		return nil, fmt.Errorf("no NHL games found for date")
-	}
-
-	teamStats, err := repository.GetAllTeamStats(games[0].Season)
-	if err != nil {
-		return nil, err
-	}
-
-	var restDays map[int]int
-	restDays, err = repository.GetTeamsRest(date, games)
-	if err != nil {
-		return nil, err
-	}
-
-	var allPlayers []models.PlayerStats
-	for _, game := range games {
-		players, err := repository.GetPlayerStats(game.GameID, []models.Team{game.AwayTeam, game.HomeTeam})
-		if err != nil {
-			fmt.Println("Error fetching player stats:", err)
-			continue
-		}
-		playerStats := CalculateShootingStatsWithModel(players, teamStats, restDays, model)
-		allPlayers = append(allPlayers, playerStats...)
-	}
-
-	var gamesWithPlayers []models.GameWithPlayers
-
-	for _, game := range games {
-		filteredPlayers := helpers.Filter(allPlayers, func(player models.PlayerStats) bool {
-			return player.TeamId == game.AwayTeam.Id || player.TeamId == game.HomeTeam.Id
-		})
-
-		mappedPlayers := helpers.Map(filteredPlayers, func(player models.PlayerStats) models.PlayerStats {
-			// Don't load past prediction data since this is just a simulation
-			return player
-		})
-
-		gamesWithPlayers = append(gamesWithPlayers, models.GameWithPlayers{
-			Game:    game,
-			Players: mappedPlayers,
-		})
-	}
-
-	return gamesWithPlayers, nil
 }
 
 func GetPlayerShotStats(date string) ([]models.GameWithPlayers, error) {

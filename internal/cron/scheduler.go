@@ -59,7 +59,7 @@ func StopScheduler() {
 	}
 }
 
-// FetchDailyPredictions fetches games for today and makes predictions
+// FetchDailyPredictions fetches games for today and makes predictions using all models
 func FetchDailyPredictions(date *string) error {
 	// Get today's date in EST
 	est, _ := time.LoadLocation("America/New_York")
@@ -70,27 +70,17 @@ func FetchDailyPredictions(date *string) error {
 		today = *date
 	}
 
-	// Get games with predictions
-	gamesWithPlayers, err := service.GetPlayerShotStats(today)
+	// Run all models and store predictions in both tables
+	err := service.RunAndStoreAllModelPredictions(today)
 	if err != nil {
-		return fmt.Errorf("failed to get shot stats: %w", err)
+		return fmt.Errorf("failed to run and store model predictions: %w", err)
 	}
 
-	// Store each game prediction
-	for _, gameWithPlayers := range gamesWithPlayers {
-
-		if err := repository.StoreGamePredictions(gameWithPlayers); err != nil {
-			log.Printf("Error storing predictions for game %d: %v", gameWithPlayers.Game.GameID, err)
-			continue
-		}
-
-		log.Printf("Stored predictions for game %d: %s", gameWithPlayers.Game.GameID, gameWithPlayers.Game.Title)
-	}
-
+	log.Printf("Successfully stored predictions for all models for date %s", today)
 	return nil
 }
 
-// ValidateCompletedGames validates predictions for completed games
+// ValidateCompletedGames validates predictions for completed games in both tables
 func ValidateCompletedGames(date *string) error {
 	est, _ := time.LoadLocation("America/New_York")
 	var today string
@@ -99,31 +89,58 @@ func ValidateCompletedGames(date *string) error {
 	} else {
 		today = *date
 	}
+
+	// Get predictions from original table
 	predictionRecords, err := repository.GetGamePredictionsForDate(today)
-	log.Printf("Found %d predictions for date %s", len(predictionRecords), today)
+	log.Printf("Found %d predictions in original table for date %s", len(predictionRecords), today)
 	if err != nil {
 		return fmt.Errorf("failed to get pending games: %w", err)
 	}
 
-	// Get actual shots for all games
-	gameIDs := make([]int, len(predictionRecords))
-	for i, prediction := range predictionRecords {
-		gameIDs[i] = prediction.GameID
+	// Get actual shots for games
+	gameIDs := make([]int, 0)
+	gameIDMap := make(map[int]bool)
+
+	for _, prediction := range predictionRecords {
+		if !gameIDMap[prediction.GameID] {
+			gameIDs = append(gameIDs, prediction.GameID)
+			gameIDMap[prediction.GameID] = true
+		}
 	}
+
+	if len(gameIDs) == 0 {
+		log.Printf("No games to validate for date %s", today)
+		return nil
+	}
+
+	// Fetch actual shots
 	actualShots, err := nhlRepo.FetchActualGameShots(gameIDs)
 	if err != nil {
 		log.Printf("Error fetching results for games %v: %v", gameIDs, err)
 		return fmt.Errorf("failed to fetch actual shots: %w", err)
 	}
 
+	// Update original table
 	for _, prediction := range predictionRecords {
-		if err := repository.StoreActualShots(prediction, actualShots[prediction.PlayerID]); err != nil {
-			log.Printf("Error storing results for game %d: %v", prediction.GameID, err)
+		// Skip if no actual shots data available for this player
+		if _, exists := actualShots[prediction.PlayerID]; !exists {
 			continue
 		}
 
-		log.Printf("Validated game %d", prediction.GameID)
+		if err := repository.StoreActualShots(prediction, actualShots[prediction.PlayerID]); err != nil {
+			log.Printf("Error storing results for game %d, player %d in original table: %v",
+				prediction.GameID, prediction.PlayerID, err)
+			continue
+		}
+
+		// Also update in model_predictions table
+		if err := repository.UpdateModelPredictionsWithActual(prediction.GameID, prediction.PlayerID, actualShots[prediction.PlayerID]); err != nil {
+			log.Printf("Error storing results for game %d, player %d in model_predictions table: %v",
+				prediction.GameID, prediction.PlayerID, err)
+			continue
+		}
 	}
 
+	log.Printf("Validated predictions for %d games", len(gameIDs))
 	return nil
 }
