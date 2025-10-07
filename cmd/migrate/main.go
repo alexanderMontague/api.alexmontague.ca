@@ -16,7 +16,7 @@ func main() {
 	downCmd := flag.Bool("down", false, "Roll back the last migration")
 	createCmd := flag.String("create", "", "Create a new migration with the given name")
 	migrationsDir := flag.String("dir", "./internal/database/migrations/scripts", "Directory containing migration files")
-	dbPath := flag.String("db", "./nhl_predictions.db", "Path to SQLite database file")
+	dbPath := flag.String("db", database.DB_PATH, "Path to SQLite database file")
 
 	flag.Parse()
 

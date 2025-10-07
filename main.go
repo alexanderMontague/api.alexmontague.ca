@@ -53,7 +53,7 @@ func handleRequests() {
 
 func main() {
 	// Initialize database
-	if err := database.InitDB("./nhl_predictions.db"); err != nil {
+	if err := database.InitDB(database.DB_PATH); err != nil {
 		log.Fatalf("Failed to initialize database: %v", err)
 	}
 	defer database.Close()

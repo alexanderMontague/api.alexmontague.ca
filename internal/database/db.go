@@ -12,6 +12,8 @@ import (
 
 var DB *sql.DB
 
+const DB_PATH = "./database.db"
+
 // InitDB initializes the database connection and runs migrations
 func InitDB(dbPath string) error {
 	// Ensure directory exists
