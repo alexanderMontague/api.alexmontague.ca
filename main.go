@@ -44,6 +44,28 @@ func handleRequests() {
 	router.HandleFunc("/nhl/shots/records", controllers.GetPlayerShotRecords).Methods("GET")
 	router.HandleFunc("/nhl/shots/seed", controllers.SeedAndValidatePredictions).Methods("GET")
 
+	router.HandleFunc("/budget/categories", controllers.GetCategories).Methods("GET")
+	router.HandleFunc("/budget/categories", controllers.CreateCategory).Methods("POST")
+	router.HandleFunc("/budget/categories/{id}", controllers.UpdateCategory).Methods("PUT")
+	router.HandleFunc("/budget/categories/{id}", controllers.DeleteCategory).Methods("DELETE")
+	router.HandleFunc("/budget/categories", controllers.DeleteAllCategories).Methods("DELETE")
+
+	router.HandleFunc("/budget/budgets", controllers.GetBudgets).Methods("GET")
+	router.HandleFunc("/budget/budgets", controllers.CreateBudget).Methods("POST")
+	router.HandleFunc("/budget/budgets/{id}", controllers.UpdateBudget).Methods("PUT")
+	router.HandleFunc("/budget/budgets/{id}", controllers.DeleteBudget).Methods("DELETE")
+	router.HandleFunc("/budget/budgets", controllers.DeleteAllBudgets).Methods("DELETE")
+
+	router.HandleFunc("/budget/transactions", controllers.GetTransactions).Methods("GET")
+	router.HandleFunc("/budget/transactions", controllers.CreateTransactions).Methods("POST")
+	router.HandleFunc("/budget/transactions/{id}", controllers.UpdateTransaction).Methods("PATCH")
+	router.HandleFunc("/budget/transactions/{id}", controllers.DeleteTransaction).Methods("DELETE")
+	router.HandleFunc("/budget/transactions", controllers.DeleteAllTransactions).Methods("DELETE")
+
+	router.HandleFunc("/budget/clear", controllers.ClearAllBudgetData).Methods("DELETE")
+	router.HandleFunc("/budget/export", controllers.ExportBudgetData).Methods("GET")
+	router.HandleFunc("/budget/import", controllers.ImportBudgetData).Methods("POST")
+
 	// CORS middleware
 	handler := cors.Default().Handler(router)
 
