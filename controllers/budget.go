@@ -7,6 +7,7 @@ import (
 
 	"api.alexmontague.ca/helpers"
 	"api.alexmontague.ca/internal/database/repository"
+	"api.alexmontague.ca/middleware"
 	"github.com/gorilla/mux"
 )
 
@@ -19,7 +20,8 @@ func logAndRespondError(w http.ResponseWriter, statusCode int, message string, e
 func GetCategories(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	categories, err := repository.GetCategories()
+	authUser := middleware.GetAuthUser(r)
+	categories, err := repository.GetCategories(authUser.UserID)
 	if err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to fetch categories", err)
 		return
@@ -31,13 +33,14 @@ func GetCategories(w http.ResponseWriter, r *http.Request) {
 func CreateCategory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	authUser := middleware.GetAuthUser(r)
 	var category repository.Category
 	if err := json.NewDecoder(r.Body).Decode(&category); err != nil {
 		logAndRespondError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
-	saved, err := repository.SaveCategory(category)
+	saved, err := repository.SaveCategory(category, authUser.UserID)
 	if err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to save category", err)
 		return
@@ -50,6 +53,7 @@ func CreateCategory(w http.ResponseWriter, r *http.Request) {
 func UpdateCategory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	authUser := middleware.GetAuthUser(r)
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -59,7 +63,7 @@ func UpdateCategory(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := repository.UpdateCategory(id, updates)
+	updated, err := repository.UpdateCategory(id, authUser.UserID, updates)
 	if err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to update category", err)
 		return
@@ -71,10 +75,11 @@ func UpdateCategory(w http.ResponseWriter, r *http.Request) {
 func DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	authUser := middleware.GetAuthUser(r)
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	if err := repository.DeleteCategory(id); err != nil {
+	if err := repository.DeleteCategory(id, authUser.UserID); err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete category", err)
 		return
 	}
@@ -85,7 +90,8 @@ func DeleteCategory(w http.ResponseWriter, r *http.Request) {
 func DeleteAllCategories(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	if err := repository.DeleteAllCategories(); err != nil {
+	authUser := middleware.GetAuthUser(r)
+	if err := repository.DeleteAllCategories(authUser.UserID); err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete all categories", err)
 		return
 	}
@@ -96,7 +102,8 @@ func DeleteAllCategories(w http.ResponseWriter, r *http.Request) {
 func GetBudgets(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	budgets, err := repository.GetBudgets()
+	authUser := middleware.GetAuthUser(r)
+	budgets, err := repository.GetBudgets(authUser.UserID)
 	if err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to fetch budgets", err)
 		return
@@ -108,13 +115,14 @@ func GetBudgets(w http.ResponseWriter, r *http.Request) {
 func CreateBudget(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	authUser := middleware.GetAuthUser(r)
 	var budget repository.Budget
 	if err := json.NewDecoder(r.Body).Decode(&budget); err != nil {
 		logAndRespondError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
-	saved, err := repository.SaveBudget(budget)
+	saved, err := repository.SaveBudget(budget, authUser.UserID)
 	if err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to save budget", err)
 		return
@@ -127,6 +135,7 @@ func CreateBudget(w http.ResponseWriter, r *http.Request) {
 func UpdateBudget(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	authUser := middleware.GetAuthUser(r)
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -136,7 +145,7 @@ func UpdateBudget(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := repository.UpdateBudget(id, updates)
+	updated, err := repository.UpdateBudget(id, authUser.UserID, updates)
 	if err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to update budget", err)
 		return
@@ -148,10 +157,11 @@ func UpdateBudget(w http.ResponseWriter, r *http.Request) {
 func DeleteBudget(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	authUser := middleware.GetAuthUser(r)
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	if err := repository.DeleteBudget(id); err != nil {
+	if err := repository.DeleteBudget(id, authUser.UserID); err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete budget", err)
 		return
 	}
@@ -162,7 +172,8 @@ func DeleteBudget(w http.ResponseWriter, r *http.Request) {
 func DeleteAllBudgets(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	if err := repository.DeleteAllBudgets(); err != nil {
+	authUser := middleware.GetAuthUser(r)
+	if err := repository.DeleteAllBudgets(authUser.UserID); err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete all budgets", err)
 		return
 	}
@@ -173,7 +184,8 @@ func DeleteAllBudgets(w http.ResponseWriter, r *http.Request) {
 func GetTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	transactions, err := repository.GetTransactions()
+	authUser := middleware.GetAuthUser(r)
+	transactions, err := repository.GetTransactions(authUser.UserID)
 	if err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to fetch transactions", err)
 		return
@@ -185,13 +197,14 @@ func GetTransactions(w http.ResponseWriter, r *http.Request) {
 func CreateTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	authUser := middleware.GetAuthUser(r)
 	var transactions []repository.Transaction
 	if err := json.NewDecoder(r.Body).Decode(&transactions); err != nil {
 		logAndRespondError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
-	saved, err := repository.SaveTransactions(transactions)
+	saved, err := repository.SaveTransactions(transactions, authUser.UserID)
 	if err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to save transactions", err)
 		return
@@ -204,6 +217,7 @@ func CreateTransactions(w http.ResponseWriter, r *http.Request) {
 func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	authUser := middleware.GetAuthUser(r)
 	vars := mux.Vars(r)
 	id := vars["id"]
 
@@ -213,7 +227,7 @@ func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	updated, err := repository.UpdateTransaction(id, updates)
+	updated, err := repository.UpdateTransaction(id, authUser.UserID, updates)
 	if err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to update transaction", err)
 		return
@@ -225,10 +239,11 @@ func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	authUser := middleware.GetAuthUser(r)
 	vars := mux.Vars(r)
 	id := vars["id"]
 
-	if err := repository.DeleteTransaction(id); err != nil {
+	if err := repository.DeleteTransaction(id, authUser.UserID); err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete transaction", err)
 		return
 	}
@@ -239,7 +254,8 @@ func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 func DeleteAllTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	if err := repository.DeleteAllTransactions(); err != nil {
+	authUser := middleware.GetAuthUser(r)
+	if err := repository.DeleteAllTransactions(authUser.UserID); err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete all transactions", err)
 		return
 	}
@@ -250,7 +266,8 @@ func DeleteAllTransactions(w http.ResponseWriter, r *http.Request) {
 func ClearAllBudgetData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	if err := repository.ClearAllBudgetData(); err != nil {
+	authUser := middleware.GetAuthUser(r)
+	if err := repository.ClearAllBudgetData(authUser.UserID); err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to clear all data", err)
 		return
 	}
@@ -261,7 +278,8 @@ func ClearAllBudgetData(w http.ResponseWriter, r *http.Request) {
 func ExportBudgetData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
-	data, err := repository.ExportBudgetData()
+	authUser := middleware.GetAuthUser(r)
+	data, err := repository.ExportBudgetData(authUser.UserID)
 	if err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to export data", err)
 		return
@@ -273,6 +291,7 @@ func ExportBudgetData(w http.ResponseWriter, r *http.Request) {
 func ImportBudgetData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
+	authUser := middleware.GetAuthUser(r)
 	var data map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		logAndRespondError(w, http.StatusBadRequest, "Invalid request body", err)
@@ -285,7 +304,7 @@ func ImportBudgetData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := repository.ImportBudgetData(string(jsonData)); err != nil {
+	if err := repository.ImportBudgetData(string(jsonData), authUser.UserID); err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to import data", err)
 		return
 	}

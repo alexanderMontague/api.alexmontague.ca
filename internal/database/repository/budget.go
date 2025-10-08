@@ -18,12 +18,12 @@ type Category struct {
 }
 
 type Budget struct {
-	ID                string            `json:"id"`
-	Month             string            `json:"month"`
+	ID                string             `json:"id"`
+	Month             string             `json:"month"`
 	Allocations       map[string]float64 `json:"allocations"`
-	AvailableToBudget float64           `json:"availableToBudget"`
-	CreatedAt         string            `json:"createdAt"`
-	UpdatedAt         string            `json:"updatedAt"`
+	AvailableToBudget float64            `json:"availableToBudget"`
+	CreatedAt         string             `json:"createdAt"`
+	UpdatedAt         string             `json:"updatedAt"`
 }
 
 type Transaction struct {
@@ -40,12 +40,13 @@ type Transaction struct {
 	UpdatedAt       string  `json:"updatedAt"`
 }
 
-func GetCategories() ([]Category, error) {
+func GetCategories(userID int) ([]Category, error) {
 	rows, err := database.DB.Query(`
 		SELECT id, name, monthly_budget, color, created_at, updated_at
 		FROM categories
+		WHERE user_id = ?
 		ORDER BY name
-	`)
+	`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -63,15 +64,15 @@ func GetCategories() ([]Category, error) {
 	return categories, rows.Err()
 }
 
-func SaveCategory(category Category) (*Category, error) {
+func SaveCategory(category Category, userID int) (*Category, error) {
 	now := time.Now().Format("2006-01-02 15:04:05")
 	category.CreatedAt = now
 	category.UpdatedAt = now
 
 	_, err := database.DB.Exec(`
-		INSERT INTO categories (id, name, monthly_budget, color, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, category.ID, category.Name, category.MonthlyBudget, category.Color, category.CreatedAt, category.UpdatedAt)
+		INSERT INTO categories (id, name, monthly_budget, color, user_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, category.ID, category.Name, category.MonthlyBudget, category.Color, userID, category.CreatedAt, category.UpdatedAt)
 
 	if err != nil {
 		return nil, err
@@ -79,7 +80,7 @@ func SaveCategory(category Category) (*Category, error) {
 	return &category, nil
 }
 
-func UpdateCategory(id string, updates map[string]interface{}) (*Category, error) {
+func UpdateCategory(id string, userID int, updates map[string]interface{}) (*Category, error) {
 	now := time.Now().Format("2006-01-02 15:04:05")
 
 	tx, err := database.DB.Begin()
@@ -91,8 +92,8 @@ func UpdateCategory(id string, updates map[string]interface{}) (*Category, error
 	var category Category
 	err = tx.QueryRow(`
 		SELECT id, name, monthly_budget, color, created_at, updated_at
-		FROM categories WHERE id = ?
-	`, id).Scan(&category.ID, &category.Name, &category.MonthlyBudget, &category.Color, &category.CreatedAt, &category.UpdatedAt)
+		FROM categories WHERE id = ? AND user_id = ?
+	`, id, userID).Scan(&category.ID, &category.Name, &category.MonthlyBudget, &category.Color, &category.CreatedAt, &category.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -125,22 +126,23 @@ func UpdateCategory(id string, updates map[string]interface{}) (*Category, error
 	return &category, nil
 }
 
-func DeleteCategory(id string) error {
-	_, err := database.DB.Exec("DELETE FROM categories WHERE id = ?", id)
+func DeleteCategory(id string, userID int) error {
+	_, err := database.DB.Exec("DELETE FROM categories WHERE id = ? AND user_id = ?", id, userID)
 	return err
 }
 
-func DeleteAllCategories() error {
-	_, err := database.DB.Exec("DELETE FROM categories")
+func DeleteAllCategories(userID int) error {
+	_, err := database.DB.Exec("DELETE FROM categories WHERE user_id = ?", userID)
 	return err
 }
 
-func GetBudgets() ([]Budget, error) {
+func GetBudgets(userID int) ([]Budget, error) {
 	rows, err := database.DB.Query(`
 		SELECT id, month, allocations, available_to_budget, created_at, updated_at
 		FROM budgets
+		WHERE user_id = ?
 		ORDER BY month DESC
-	`)
+	`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -163,7 +165,7 @@ func GetBudgets() ([]Budget, error) {
 	return budgets, rows.Err()
 }
 
-func SaveBudget(budget Budget) (*Budget, error) {
+func SaveBudget(budget Budget, userID int) (*Budget, error) {
 	now := time.Now().Format("2006-01-02 15:04:05")
 	budget.CreatedAt = now
 	budget.UpdatedAt = now
@@ -174,9 +176,9 @@ func SaveBudget(budget Budget) (*Budget, error) {
 	}
 
 	_, err = database.DB.Exec(`
-		INSERT INTO budgets (id, month, allocations, available_to_budget, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?)
-	`, budget.ID, budget.Month, string(allocationsJSON), budget.AvailableToBudget, budget.CreatedAt, budget.UpdatedAt)
+		INSERT INTO budgets (id, month, allocations, available_to_budget, user_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, budget.ID, budget.Month, string(allocationsJSON), budget.AvailableToBudget, userID, budget.CreatedAt, budget.UpdatedAt)
 
 	if err != nil {
 		return nil, err
@@ -184,7 +186,7 @@ func SaveBudget(budget Budget) (*Budget, error) {
 	return &budget, nil
 }
 
-func UpdateBudget(id string, updates map[string]interface{}) (*Budget, error) {
+func UpdateBudget(id string, userID int, updates map[string]interface{}) (*Budget, error) {
 	now := time.Now().Format("2006-01-02 15:04:05")
 
 	tx, err := database.DB.Begin()
@@ -197,8 +199,8 @@ func UpdateBudget(id string, updates map[string]interface{}) (*Budget, error) {
 	var allocationsJSON string
 	err = tx.QueryRow(`
 		SELECT id, month, allocations, available_to_budget, created_at, updated_at
-		FROM budgets WHERE id = ?
-	`, id).Scan(&budget.ID, &budget.Month, &allocationsJSON, &budget.AvailableToBudget, &budget.CreatedAt, &budget.UpdatedAt)
+		FROM budgets WHERE id = ? AND user_id = ?
+	`, id, userID).Scan(&budget.ID, &budget.Month, &allocationsJSON, &budget.AvailableToBudget, &budget.CreatedAt, &budget.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -246,22 +248,23 @@ func UpdateBudget(id string, updates map[string]interface{}) (*Budget, error) {
 	return &budget, nil
 }
 
-func DeleteBudget(id string) error {
-	_, err := database.DB.Exec("DELETE FROM budgets WHERE id = ?", id)
+func DeleteBudget(id string, userID int) error {
+	_, err := database.DB.Exec("DELETE FROM budgets WHERE id = ? AND user_id = ?", id, userID)
 	return err
 }
 
-func DeleteAllBudgets() error {
-	_, err := database.DB.Exec("DELETE FROM budgets")
+func DeleteAllBudgets(userID int) error {
+	_, err := database.DB.Exec("DELETE FROM budgets WHERE user_id = ?", userID)
 	return err
 }
 
-func GetTransactions() ([]Transaction, error) {
+func GetTransactions(userID int) ([]Transaction, error) {
 	rows, err := database.DB.Query(`
 		SELECT id, budget_id, category_id, transaction_hash, date, merchant, amount, description, account_type, created_at, updated_at
 		FROM transactions
+		WHERE user_id = ?
 		ORDER BY date DESC
-	`)
+	`, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -283,7 +286,7 @@ func GetTransactions() ([]Transaction, error) {
 	return transactions, rows.Err()
 }
 
-func SaveTransactions(transactions []Transaction) ([]Transaction, error) {
+func SaveTransactions(transactions []Transaction, userID int) ([]Transaction, error) {
 	tx, err := database.DB.Begin()
 	if err != nil {
 		return nil, err
@@ -291,8 +294,8 @@ func SaveTransactions(transactions []Transaction) ([]Transaction, error) {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO transactions (id, budget_id, category_id, transaction_hash, date, merchant, amount, description, account_type, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO transactions (id, budget_id, category_id, transaction_hash, date, merchant, amount, description, account_type, user_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return nil, err
@@ -306,7 +309,7 @@ func SaveTransactions(transactions []Transaction) ([]Transaction, error) {
 		t.CreatedAt = now
 		t.UpdatedAt = now
 
-		_, err = stmt.Exec(t.ID, t.BudgetID, t.CategoryID, t.TransactionHash, t.Date, t.Merchant, t.Amount, t.Description, t.AccountType, t.CreatedAt, t.UpdatedAt)
+		_, err = stmt.Exec(t.ID, t.BudgetID, t.CategoryID, t.TransactionHash, t.Date, t.Merchant, t.Amount, t.Description, t.AccountType, userID, t.CreatedAt, t.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -320,7 +323,7 @@ func SaveTransactions(transactions []Transaction) ([]Transaction, error) {
 	return savedTransactions, nil
 }
 
-func UpdateTransaction(id string, updates map[string]interface{}) (*Transaction, error) {
+func UpdateTransaction(id string, userID int, updates map[string]interface{}) (*Transaction, error) {
 	now := time.Now().Format("2006-01-02 15:04:05")
 
 	tx, err := database.DB.Begin()
@@ -333,8 +336,8 @@ func UpdateTransaction(id string, updates map[string]interface{}) (*Transaction,
 	var categoryID sql.NullString
 	err = tx.QueryRow(`
 		SELECT id, budget_id, category_id, transaction_hash, date, merchant, amount, description, account_type, created_at, updated_at
-		FROM transactions WHERE id = ?
-	`, id).Scan(&t.ID, &t.BudgetID, &categoryID, &t.TransactionHash, &t.Date, &t.Merchant, &t.Amount, &t.Description, &t.AccountType, &t.CreatedAt, &t.UpdatedAt)
+		FROM transactions WHERE id = ? AND user_id = ?
+	`, id, userID).Scan(&t.ID, &t.BudgetID, &categoryID, &t.TransactionHash, &t.Date, &t.Merchant, &t.Amount, &t.Description, &t.AccountType, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -382,52 +385,52 @@ func UpdateTransaction(id string, updates map[string]interface{}) (*Transaction,
 	return &t, nil
 }
 
-func DeleteTransaction(id string) error {
-	_, err := database.DB.Exec("DELETE FROM transactions WHERE id = ?", id)
+func DeleteTransaction(id string, userID int) error {
+	_, err := database.DB.Exec("DELETE FROM transactions WHERE id = ? AND user_id = ?", id, userID)
 	return err
 }
 
-func DeleteAllTransactions() error {
-	_, err := database.DB.Exec("DELETE FROM transactions")
+func DeleteAllTransactions(userID int) error {
+	_, err := database.DB.Exec("DELETE FROM transactions WHERE user_id = ?", userID)
 	return err
 }
 
-func ClearAllBudgetData() error {
+func ClearAllBudgetData(userID int) error {
 	tx, err := database.DB.Begin()
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.Exec("DELETE FROM transactions"); err != nil {
+	if _, err := tx.Exec("DELETE FROM transactions WHERE user_id = ?", userID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec("DELETE FROM budgets"); err != nil {
+	if _, err := tx.Exec("DELETE FROM budgets WHERE user_id = ?", userID); err != nil {
 		return err
 	}
-	if _, err := tx.Exec("DELETE FROM categories"); err != nil {
+	if _, err := tx.Exec("DELETE FROM categories WHERE user_id = ?", userID); err != nil {
 		return err
 	}
 
 	return tx.Commit()
 }
 
-func ExportBudgetData() (string, error) {
+func ExportBudgetData(userID int) (string, error) {
 	data := make(map[string]interface{})
 
-	categories, err := GetCategories()
+	categories, err := GetCategories(userID)
 	if err != nil {
 		return "", err
 	}
 	data["categories"] = categories
 
-	budgets, err := GetBudgets()
+	budgets, err := GetBudgets(userID)
 	if err != nil {
 		return "", err
 	}
 	data["budgets"] = budgets
 
-	transactions, err := GetTransactions()
+	transactions, err := GetTransactions(userID)
 	if err != nil {
 		return "", err
 	}
@@ -441,7 +444,7 @@ func ExportBudgetData() (string, error) {
 	return string(jsonData), nil
 }
 
-func ImportBudgetData(jsonData string) error {
+func ImportBudgetData(jsonData string, userID int) error {
 	var data map[string]interface{}
 	if err := json.Unmarshal([]byte(jsonData), &data); err != nil {
 		return err
@@ -460,7 +463,7 @@ func ImportBudgetData(jsonData string) error {
 			if err := json.Unmarshal(catJSON, &category); err != nil {
 				return err
 			}
-			if _, err := SaveCategory(category); err != nil {
+			if _, err := SaveCategory(category, userID); err != nil {
 				return err
 			}
 		}
@@ -473,7 +476,7 @@ func ImportBudgetData(jsonData string) error {
 			if err := json.Unmarshal(budgetJSON, &budget); err != nil {
 				return err
 			}
-			if _, err := SaveBudget(budget); err != nil {
+			if _, err := SaveBudget(budget, userID); err != nil {
 				return err
 			}
 		}
@@ -489,11 +492,10 @@ func ImportBudgetData(jsonData string) error {
 			}
 			transactionsList = append(transactionsList, transaction)
 		}
-		if _, err := SaveTransactions(transactionsList); err != nil {
+		if _, err := SaveTransactions(transactionsList, userID); err != nil {
 			return err
 		}
 	}
 
 	return tx.Commit()
 }
-

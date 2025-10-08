@@ -44,30 +44,46 @@ func handleRequests() {
 	router.HandleFunc("/nhl/shots/records", controllers.GetPlayerShotRecords).Methods("GET")
 	router.HandleFunc("/nhl/shots/seed", controllers.SeedAndValidatePredictions).Methods("GET")
 
-	router.HandleFunc("/budget/categories", controllers.GetCategories).Methods("GET")
-	router.HandleFunc("/budget/categories", controllers.CreateCategory).Methods("POST")
-	router.HandleFunc("/budget/categories/{id}", controllers.UpdateCategory).Methods("PUT")
-	router.HandleFunc("/budget/categories/{id}", controllers.DeleteCategory).Methods("DELETE")
-	router.HandleFunc("/budget/categories", controllers.DeleteAllCategories).Methods("DELETE")
+	router.HandleFunc("/auth/register", controllers.Register).Methods("POST")
+	router.HandleFunc("/auth/login", controllers.Login).Methods("POST")
 
-	router.HandleFunc("/budget/budgets", controllers.GetBudgets).Methods("GET")
-	router.HandleFunc("/budget/budgets", controllers.CreateBudget).Methods("POST")
-	router.HandleFunc("/budget/budgets/{id}", controllers.UpdateBudget).Methods("PUT")
-	router.HandleFunc("/budget/budgets/{id}", controllers.DeleteBudget).Methods("DELETE")
-	router.HandleFunc("/budget/budgets", controllers.DeleteAllBudgets).Methods("DELETE")
+	budgetRouter := router.PathPrefix("/budget").Subrouter()
+	budgetRouter.Use(middleware.AuthMiddleware)
 
-	router.HandleFunc("/budget/transactions", controllers.GetTransactions).Methods("GET")
-	router.HandleFunc("/budget/transactions", controllers.CreateTransactions).Methods("POST")
-	router.HandleFunc("/budget/transactions/{id}", controllers.UpdateTransaction).Methods("PATCH")
-	router.HandleFunc("/budget/transactions/{id}", controllers.DeleteTransaction).Methods("DELETE")
-	router.HandleFunc("/budget/transactions", controllers.DeleteAllTransactions).Methods("DELETE")
+	budgetRouter.HandleFunc("/me", controllers.GetCurrentUser).Methods("GET")
 
-	router.HandleFunc("/budget/clear", controllers.ClearAllBudgetData).Methods("DELETE")
-	router.HandleFunc("/budget/export", controllers.ExportBudgetData).Methods("GET")
-	router.HandleFunc("/budget/import", controllers.ImportBudgetData).Methods("POST")
+	budgetRouter.HandleFunc("/categories", controllers.GetCategories).Methods("GET")
+	budgetRouter.HandleFunc("/categories", controllers.CreateCategory).Methods("POST")
+	budgetRouter.HandleFunc("/categories/{id}", controllers.UpdateCategory).Methods("PUT")
+	budgetRouter.HandleFunc("/categories/{id}", controllers.DeleteCategory).Methods("DELETE")
+	budgetRouter.HandleFunc("/categories", controllers.DeleteAllCategories).Methods("DELETE")
+
+	budgetRouter.HandleFunc("/budgets", controllers.GetBudgets).Methods("GET")
+	budgetRouter.HandleFunc("/budgets", controllers.CreateBudget).Methods("POST")
+	budgetRouter.HandleFunc("/budgets/{id}", controllers.UpdateBudget).Methods("PUT")
+	budgetRouter.HandleFunc("/budgets/{id}", controllers.DeleteBudget).Methods("DELETE")
+	budgetRouter.HandleFunc("/budgets", controllers.DeleteAllBudgets).Methods("DELETE")
+
+	budgetRouter.HandleFunc("/transactions", controllers.GetTransactions).Methods("GET")
+	budgetRouter.HandleFunc("/transactions", controllers.CreateTransactions).Methods("POST")
+	budgetRouter.HandleFunc("/transactions/{id}", controllers.UpdateTransaction).Methods("PATCH")
+	budgetRouter.HandleFunc("/transactions/{id}", controllers.DeleteTransaction).Methods("DELETE")
+	budgetRouter.HandleFunc("/transactions", controllers.DeleteAllTransactions).Methods("DELETE")
+
+	budgetRouter.HandleFunc("/clear", controllers.ClearAllBudgetData).Methods("DELETE")
+	budgetRouter.HandleFunc("/export", controllers.ExportBudgetData).Methods("GET")
+	budgetRouter.HandleFunc("/import", controllers.ImportBudgetData).Methods("POST")
 
 	// CORS middleware
-	handler := cors.Default().Handler(router)
+	c := cors.New(cors.Options{
+		AllowedOrigins:   []string{"http://localhost:3000", "http://localhost:5173"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
+		ExposedHeaders:   []string{"Link"},
+		AllowCredentials: true,
+		MaxAge:           300,
+	})
+	handler := c.Handler(router)
 
 	// Start Server
 	log.Fatal(http.ListenAndServe(PORT, handler))
