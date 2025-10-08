@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"api.alexmontague.ca/helpers"
@@ -9,13 +10,18 @@ import (
 	"github.com/gorilla/mux"
 )
 
+func logAndRespondError(w http.ResponseWriter, statusCode int, message string, err error) {
+	log.Printf("[Budget Error] %s: %v", message, err)
+	w.WriteHeader(statusCode)
+	json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: statusCode, Message: message})
+}
+
 func GetCategories(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	categories, err := repository.GetCategories()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to fetch categories"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to fetch categories", err)
 		return
 	}
 
@@ -27,15 +33,13 @@ func CreateCategory(w http.ResponseWriter, r *http.Request) {
 
 	var category repository.Category
 	if err := json.NewDecoder(r.Body).Decode(&category); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: "Invalid request body"})
+		logAndRespondError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
 	saved, err := repository.SaveCategory(category)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to save category"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to save category", err)
 		return
 	}
 
@@ -51,15 +55,13 @@ func UpdateCategory(w http.ResponseWriter, r *http.Request) {
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: "Invalid request body"})
+		logAndRespondError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
 	updated, err := repository.UpdateCategory(id, updates)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to update category"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to update category", err)
 		return
 	}
 
@@ -73,8 +75,7 @@ func DeleteCategory(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	if err := repository.DeleteCategory(id); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to delete category"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete category", err)
 		return
 	}
 
@@ -85,8 +86,7 @@ func DeleteAllCategories(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	if err := repository.DeleteAllCategories(); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to delete all categories"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete all categories", err)
 		return
 	}
 
@@ -98,8 +98,7 @@ func GetBudgets(w http.ResponseWriter, r *http.Request) {
 
 	budgets, err := repository.GetBudgets()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to fetch budgets"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to fetch budgets", err)
 		return
 	}
 
@@ -111,15 +110,13 @@ func CreateBudget(w http.ResponseWriter, r *http.Request) {
 
 	var budget repository.Budget
 	if err := json.NewDecoder(r.Body).Decode(&budget); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: "Invalid request body"})
+		logAndRespondError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
 	saved, err := repository.SaveBudget(budget)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to save budget"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to save budget", err)
 		return
 	}
 
@@ -135,15 +132,13 @@ func UpdateBudget(w http.ResponseWriter, r *http.Request) {
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: "Invalid request body"})
+		logAndRespondError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
 	updated, err := repository.UpdateBudget(id, updates)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to update budget"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to update budget", err)
 		return
 	}
 
@@ -157,8 +152,7 @@ func DeleteBudget(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	if err := repository.DeleteBudget(id); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to delete budget"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete budget", err)
 		return
 	}
 
@@ -169,8 +163,7 @@ func DeleteAllBudgets(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	if err := repository.DeleteAllBudgets(); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to delete all budgets"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete all budgets", err)
 		return
 	}
 
@@ -182,8 +175,7 @@ func GetTransactions(w http.ResponseWriter, r *http.Request) {
 
 	transactions, err := repository.GetTransactions()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to fetch transactions"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to fetch transactions", err)
 		return
 	}
 
@@ -195,15 +187,13 @@ func CreateTransactions(w http.ResponseWriter, r *http.Request) {
 
 	var transactions []repository.Transaction
 	if err := json.NewDecoder(r.Body).Decode(&transactions); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: "Invalid request body"})
+		logAndRespondError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
 	saved, err := repository.SaveTransactions(transactions)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to save transactions"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to save transactions", err)
 		return
 	}
 
@@ -219,15 +209,13 @@ func UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 
 	var updates map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&updates); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: "Invalid request body"})
+		logAndRespondError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
 	updated, err := repository.UpdateTransaction(id, updates)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to update transaction"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to update transaction", err)
 		return
 	}
 
@@ -241,8 +229,7 @@ func DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 	id := vars["id"]
 
 	if err := repository.DeleteTransaction(id); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to delete transaction"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete transaction", err)
 		return
 	}
 
@@ -253,8 +240,7 @@ func DeleteAllTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	if err := repository.DeleteAllTransactions(); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to delete all transactions"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to delete all transactions", err)
 		return
 	}
 
@@ -265,8 +251,7 @@ func ClearAllBudgetData(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
 	if err := repository.ClearAllBudgetData(); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to clear all data"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to clear all data", err)
 		return
 	}
 
@@ -278,8 +263,7 @@ func ExportBudgetData(w http.ResponseWriter, r *http.Request) {
 
 	data, err := repository.ExportBudgetData()
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to export data"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to export data", err)
 		return
 	}
 
@@ -291,21 +275,18 @@ func ImportBudgetData(w http.ResponseWriter, r *http.Request) {
 
 	var data map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: "Invalid request body"})
+		logAndRespondError(w, http.StatusBadRequest, "Invalid request body", err)
 		return
 	}
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 400, Message: "Failed to process data"})
+		logAndRespondError(w, http.StatusBadRequest, "Failed to process data", err)
 		return
 	}
 
 	if err := repository.ImportBudgetData(string(jsonData)); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		json.NewEncoder(w).Encode(helpers.Response{Error: true, Code: 500, Message: "Failed to import data"})
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to import data", err)
 		return
 	}
 
