@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"api.alexmontague.ca/internal/database"
+	"github.com/google/uuid"
 )
 
 type Category struct {
@@ -66,6 +67,7 @@ func GetCategories(userID int) ([]Category, error) {
 
 func SaveCategory(category Category, userID int) (*Category, error) {
 	now := time.Now().Format("2006-01-02 15:04:05")
+	category.ID = uuid.New().String()
 	category.CreatedAt = now
 	category.UpdatedAt = now
 
@@ -167,6 +169,7 @@ func GetBudgets(userID int) ([]Budget, error) {
 
 func SaveBudget(budget Budget, userID int) (*Budget, error) {
 	now := time.Now().Format("2006-01-02 15:04:05")
+	budget.ID = uuid.New().String()
 	budget.CreatedAt = now
 	budget.UpdatedAt = now
 
@@ -306,6 +309,7 @@ func SaveTransactions(transactions []Transaction, userID int) ([]Transaction, er
 	savedTransactions := []Transaction{}
 
 	for _, t := range transactions {
+		t.ID = uuid.New().String()
 		t.CreatedAt = now
 		t.UpdatedAt = now
 

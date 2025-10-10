@@ -66,7 +66,7 @@ func handleRequests() {
 
 	budgetRouter.HandleFunc("/transactions", controllers.GetTransactions).Methods("GET")
 	budgetRouter.HandleFunc("/transactions", controllers.CreateTransactions).Methods("POST")
-	budgetRouter.HandleFunc("/transactions/{id}", controllers.UpdateTransaction).Methods("PATCH")
+	budgetRouter.HandleFunc("/transactions/{id}", controllers.UpdateTransaction).Methods("PUT")
 	budgetRouter.HandleFunc("/transactions/{id}", controllers.DeleteTransaction).Methods("DELETE")
 	budgetRouter.HandleFunc("/transactions", controllers.DeleteAllTransactions).Methods("DELETE")
 

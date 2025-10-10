@@ -16,15 +16,14 @@ CREATE TABLE IF NOT EXISTS budgets (
 	allocations TEXT NOT NULL,
 	available_to_budget REAL NOT NULL DEFAULT 0,
 	created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-	UNIQUE(month)
+	updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
 	id TEXT PRIMARY KEY,
 	budget_id TEXT NOT NULL,
 	category_id TEXT,
-	transaction_hash TEXT NOT NULL UNIQUE,
+	transaction_hash TEXT NOT NULL,
 	date TEXT NOT NULL,
 	merchant TEXT NOT NULL,
 	amount REAL NOT NULL,

@@ -8,12 +8,13 @@ Method:
 - Look up the transaction description or merchant if you are not already instantly aware of the category the transaction fits into
 - Be as efficient as possible
   Details:
-- price amount is in canadian
+- price amount is in canadian dollars
 - this is for a budgeting app
+- the input will be in XML to easily understand
 - output the results in JSON
   Example Input:
 
-```markdown
+```xml
 <input>
   <categories>
     <category>
