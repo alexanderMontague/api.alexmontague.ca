@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"slices"
 	"time"
 
 	"api.alexmontague.ca/internal/database"
@@ -27,10 +28,18 @@ type LoginRequest struct {
 	Password string `json:"password"`
 }
 
+var ALLOWED_USERS = []string{
+	"me@alexmontague.ca",
+}
+
 func CreateUser(email, password string) (*User, error) {
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return nil, err
+	}
+
+	if !slices.Contains(ALLOWED_USERS, email) {
+		return nil, errors.New("unauthorized user " + email)
 	}
 
 	now := time.Now().Format("2006-01-02 15:04:05")
@@ -98,4 +107,3 @@ func ValidatePassword(user *User, password string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(password))
 	return err == nil
 }
-

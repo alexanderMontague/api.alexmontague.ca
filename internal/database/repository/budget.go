@@ -101,7 +101,9 @@ func UpdateCategory(id string, userID int, updates map[string]interface{}) (*Cat
 	}
 
 	if name, ok := updates["name"].(string); ok {
-		category.Name = name
+		if category.Name != "Other" {
+			category.Name = name
+		}
 	}
 	if monthlyBudget, ok := updates["monthlyBudget"].(float64); ok {
 		category.MonthlyBudget = &monthlyBudget
@@ -129,13 +131,55 @@ func UpdateCategory(id string, userID int, updates map[string]interface{}) (*Cat
 }
 
 func DeleteCategory(id string, userID int) error {
-	_, err := database.DB.Exec("DELETE FROM categories WHERE id = ? AND user_id = ?", id, userID)
+	var categoryName string
+	err := database.DB.QueryRow("SELECT name FROM categories WHERE id = ? AND user_id = ?", id, userID).Scan(&categoryName)
+	if err != nil {
+		return err
+	}
+
+	if categoryName == "Other" {
+		return sql.ErrNoRows
+	}
+
+	_, err = database.DB.Exec("DELETE FROM categories WHERE id = ? AND user_id = ?", id, userID)
 	return err
 }
 
 func DeleteAllCategories(userID int) error {
-	_, err := database.DB.Exec("DELETE FROM categories WHERE user_id = ?", userID)
+	_, err := database.DB.Exec("DELETE FROM categories WHERE user_id = ? AND name != 'Other'", userID)
 	return err
+}
+
+func CreateDefaultCategory(userID int) error {
+	defaultCategories := []struct {
+		name  string
+		color string
+	}{
+		{"Groceries", "#22c55e"},
+		{"Dining Out", "#ef4444"},
+		{"Entertainment", "#ec4899"},
+		{"Shopping", "#8b5cf6"},
+		{"Transportation", "#3b82f6"},
+		{"Bills & Utilities", "#f59e0b"},
+		{"Subscriptions", "#06b6d4"},
+		{"Healthcare", "#10b981"},
+		{"Personal Care", "#a855f7"},
+		{"Other", "#6b7280"},
+	}
+
+	for _, dc := range defaultCategories {
+		color := dc.color
+		category := Category{
+			Name:  dc.name,
+			Color: &color,
+		}
+		_, err := SaveCategory(category, userID)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 func GetBudgets(userID int) ([]Budget, error) {

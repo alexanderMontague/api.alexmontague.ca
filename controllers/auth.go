@@ -38,6 +38,10 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := repository.CreateDefaultCategory(user.ID); err != nil {
+		log.Printf("[Warning] Failed to create default category for user %d: %v", user.ID, err)
+	}
+
 	token, err := helpers.GenerateToken(user.ID, user.Email)
 	if err != nil {
 		logAndRespondError(w, http.StatusInternalServerError, "Failed to generate token", err)
@@ -126,4 +130,3 @@ func GetCurrentUser(w http.ResponseWriter, r *http.Request) {
 
 	json.NewEncoder(w).Encode(response)
 }
-
