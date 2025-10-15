@@ -17,7 +17,7 @@ type Claims struct {
 func GetJWTSecret() []byte {
 	secret := os.Getenv("JWT_SECRET")
 	if secret == "" {
-		secret = "your-secret-key-change-in-production"
+		panic("JWT_SECRET is not set")
 	}
 	return []byte(secret)
 }
@@ -54,4 +54,3 @@ func ValidateToken(tokenString string) (*Claims, error) {
 
 	return nil, errors.New("invalid token")
 }
-
