@@ -38,7 +38,7 @@ func Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := repository.CreateDefaultCategory(user.ID); err != nil {
+	if err := repository.CreateDefaultCategories(user.ID); err != nil {
 		log.Printf("[Warning] Failed to create default category for user %d: %v", user.ID, err)
 	}
 

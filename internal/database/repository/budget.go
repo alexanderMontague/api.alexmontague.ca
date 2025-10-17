@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"api.alexmontague.ca/internal/database"
@@ -150,7 +151,7 @@ func DeleteAllCategories(userID int) error {
 	return err
 }
 
-func CreateDefaultCategory(userID int) error {
+func CreateDefaultCategories(userID int) error {
 	defaultCategories := []struct {
 		name  string
 		color string
@@ -334,13 +335,54 @@ func GetTransactions(userID int) ([]Transaction, error) {
 }
 
 func SaveTransactions(transactions []Transaction, userID int) ([]Transaction, error) {
-	tx, err := database.DB.Begin()
+	categories, err := GetCategories(userID)
 	if err != nil {
 		return nil, err
 	}
-	defer tx.Rollback()
 
-	stmt, err := tx.Prepare(`
+	now := time.Now().Format("2006-01-02 15:04:05")
+	transactionsToSave := make([]Transaction, len(transactions))
+	for i, t := range transactions {
+		t.ID = uuid.New().String()
+		t.CreatedAt = now
+		t.UpdatedAt = now
+		transactionsToSave[i] = t
+	}
+
+	if len(categories) > 0 && len(transactionsToSave) > 0 {
+		categorized, err := CategorizeTransactions(categories, transactionsToSave)
+		if err == nil && len(categorized) > 0 {
+			transactionsToSave = ApplyCategorizationToTransactions(categorized, transactionsToSave)
+
+			fmt.Println("\n=== AI CATEGORIZATION RESULTS ===")
+			categoryMap := make(map[string]string)
+			for _, cat := range categories {
+				categoryMap[cat.ID] = cat.Name
+			}
+
+			for _, tx := range transactionsToSave {
+				categoryName := "NONE"
+				if tx.CategoryID != nil {
+					if name, exists := categoryMap[*tx.CategoryID]; exists {
+						categoryName = name
+					}
+				}
+				fmt.Printf("Transaction: %-40s | Merchant: %-30s | Amount: $%-8.2f | Category: %s\n",
+					tx.Description, tx.Merchant, tx.Amount, categoryName)
+			}
+			fmt.Println("================================\n")
+		} else if err != nil {
+			fmt.Printf("AI Categorization Error: %v\n", err)
+		}
+	}
+
+	dbTx, err := database.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	defer dbTx.Rollback()
+
+	stmt, err := dbTx.Prepare(`
 		INSERT INTO transactions (id, budget_id, category_id, transaction_hash, date, merchant, amount, description, account_type, user_id, created_at, updated_at)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
@@ -349,14 +391,8 @@ func SaveTransactions(transactions []Transaction, userID int) ([]Transaction, er
 	}
 	defer stmt.Close()
 
-	now := time.Now().Format("2006-01-02 15:04:05")
 	savedTransactions := []Transaction{}
-
-	for _, t := range transactions {
-		t.ID = uuid.New().String()
-		t.CreatedAt = now
-		t.UpdatedAt = now
-
+	for _, t := range transactionsToSave {
 		_, err = stmt.Exec(t.ID, t.BudgetID, t.CategoryID, t.TransactionHash, t.Date, t.Merchant, t.Amount, t.Description, t.AccountType, userID, t.CreatedAt, t.UpdatedAt)
 		if err != nil {
 			return nil, err
@@ -364,7 +400,7 @@ func SaveTransactions(transactions []Transaction, userID int) ([]Transaction, er
 		savedTransactions = append(savedTransactions, t)
 	}
 
-	if err := tx.Commit(); err != nil {
+	if err := dbTx.Commit(); err != nil {
 		return nil, err
 	}
 
