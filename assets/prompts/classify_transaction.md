@@ -155,8 +155,8 @@ Example Input:
         ...
       </amount>
     </transaction>
+    ...
   </transactions>
-  ...
 </input>
 ```
 

@@ -7,18 +7,34 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/invopop/jsonschema"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 )
 
+var PROMPT_FILE = "assets/prompts/classify_transaction_v2.md"
+var MODEL = openai.ChatModelGPT4oMini
+
 type CategorizedTransaction struct {
-	ID         string `json:"id"`
-	CategoryID string `json:"categoryId"`
+	ID         string `json:"id" jsonschema_description:"The unique ID of the transaction"`
+	CategoryID string `json:"categoryId" jsonschema_description:"The ID of the category assigned to this transaction"`
 }
 
 type CategorizationResponse struct {
-	Transactions []CategorizedTransaction `json:"transactions"`
+	Transactions []CategorizedTransaction `json:"transactions" jsonschema_description:"List of categorized transactions"`
 }
+
+func GenerateSchema[T any]() interface{} {
+	reflector := jsonschema.Reflector{
+		AllowAdditionalProperties: false,
+		DoNotReference:            true,
+	}
+	var v T
+	schema := reflector.Reflect(v)
+	return schema
+}
+
+var CategorizationResponseSchema = GenerateSchema[CategorizationResponse]()
 
 type XMLCategory struct {
 	XMLName xml.Name `xml:"category"`
@@ -42,8 +58,7 @@ type XMLInput struct {
 }
 
 func buildPrompt(categories []Category, transactions []Transaction) string {
-	promptFile := "assets/prompts/classify_transaction.md"
-	promptBytes, err := os.ReadFile(promptFile)
+	promptBytes, err := os.ReadFile(PROMPT_FILE)
 	if err != nil {
 		return ""
 	}
@@ -95,9 +110,17 @@ func CategorizeTransactions(categories []Category, transactions []Transaction) (
 	fmt.Println(prompt)
 	fmt.Println("=============================\n")
 
+	schemaParam := openai.ResponseFormatJSONSchemaJSONSchemaParam{
+		Name:        "categorization_response",
+		Description: openai.String("Categorized list of transactions with assigned category IDs"),
+		Schema:      CategorizationResponseSchema,
+		Strict:      openai.Bool(true),
+	}
+
 	chatCompletion, err := client.Chat.Completions.New(
 		context.Background(),
 		openai.ChatCompletionNewParams{
+			Model: MODEL,
 			Messages: []openai.ChatCompletionMessageParamUnion{
 				{
 					OfUser: &openai.ChatCompletionUserMessageParam{
@@ -107,8 +130,11 @@ func CategorizeTransactions(categories []Category, transactions []Transaction) (
 					},
 				},
 			},
-			ResponseFormat: &openai.ChatCompletionResponseFormatParam{},
-			Model:          openai.ChatModelGPT4oMini,
+			ResponseFormat: openai.ChatCompletionNewParamsResponseFormatUnion{
+				OfJSONSchema: &openai.ResponseFormatJSONSchemaParam{
+					JSONSchema: schemaParam,
+				},
+			},
 		},
 	)
 
