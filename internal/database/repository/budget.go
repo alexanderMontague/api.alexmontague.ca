@@ -352,7 +352,7 @@ func SaveTransactions(transactions []Transaction, userID int) ([]Transaction, er
 	if len(categories) > 0 && len(transactionsToSave) > 0 {
 		categorized, err := CategorizeTransactions(categories, transactionsToSave)
 		if err == nil && len(categorized) > 0 {
-			transactionsToSave = ApplyCategorizationToTransactions(categorized, transactionsToSave)
+			transactionsToSave = ApplyCategorizationToTransactions(categories, categorized, transactionsToSave)
 
 			fmt.Println("\n=== AI CATEGORIZATION RESULTS ===")
 			categoryMap := make(map[string]string)

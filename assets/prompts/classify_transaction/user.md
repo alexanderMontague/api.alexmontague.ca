@@ -1,0 +1,2 @@
+- Please classify the following transactions into the provided categories
+- Research the name of the transaction/merchant before placing it in the "Other" category

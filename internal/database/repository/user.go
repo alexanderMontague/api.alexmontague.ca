@@ -30,6 +30,15 @@ type LoginRequest struct {
 
 var ALLOWED_USERS = []string{
 	"me@alexmontague.ca",
+	"me2@alexmontague.ca",
+	"me3@alexmontague.ca",
+	"me4@alexmontague.ca",
+	"me5@alexmontague.ca",
+	"me6@alexmontague.ca",
+	"me7@alexmontague.ca",
+	"me8@alexmontague.ca",
+	"me9@alexmontague.ca",
+	"me10@alexmontague.ca",
 }
 
 func CreateUser(email, password string) (*User, error) {

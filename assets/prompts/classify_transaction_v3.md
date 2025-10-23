@@ -1,5 +1,5 @@
 You are classifying financial transactions into the provided categories.
-Use the name of the transactions, the merchant, and price to infer the category.
+Use the name of the transactions and the merchant to infer the category.
 If the category is not obviously apparent, categorize the transaction as "Other"
 "Other" category.
 Return valid JSON matching this schema:
@@ -34,12 +34,6 @@ Example Input:
       <merchant>
         RESTAURANT TRANSACTION
       </merchant>
-      <date>
-        2025-09-16
-      </date>
-      <amount>
-        $27.95
-      </amount>
     </transaction>
     ...
   </transactions>

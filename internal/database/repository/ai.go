@@ -14,10 +14,12 @@ import (
 
 var PROMPT_FILE = "assets/prompts/classify_transaction_v2.md"
 var MODEL = openai.ChatModelGPT4oMini
+var TEMPERATURE = openai.Float(0.0)
+var TOP_P = openai.Float(1.0)
 
 type CategorizedTransaction struct {
-	ID         string `json:"id" jsonschema_description:"The unique ID of the transaction"`
-	CategoryID string `json:"categoryId" jsonschema_description:"The ID of the category assigned to this transaction"`
+	ID       string `json:"id" jsonschema_description:"The unique ID of the transaction"`
+	Category string `json:"category" jsonschema_description:"The category assigned to this transaction"`
 }
 
 type CategorizationResponse struct {
@@ -38,7 +40,6 @@ var CategorizationResponseSchema = GenerateSchema[CategorizationResponse]()
 
 type XMLCategory struct {
 	XMLName xml.Name `xml:"category"`
-	ID      string   `xml:"id"`
 	Name    string   `xml:"name"`
 }
 
@@ -47,8 +48,6 @@ type XMLTransaction struct {
 	ID          string   `xml:"id"`
 	Description string   `xml:"description"`
 	Merchant    string   `xml:"merchant"`
-	Date        string   `xml:"date"`
-	Amount      string   `xml:"amount"`
 }
 
 type XMLInput struct {
@@ -67,7 +66,6 @@ func buildPrompt(categories []Category, transactions []Transaction) string {
 	xmlCategories := make([]XMLCategory, len(categories))
 	for i, cat := range categories {
 		xmlCategories[i] = XMLCategory{
-			ID:   cat.ID,
 			Name: cat.Name,
 		}
 	}
@@ -78,8 +76,6 @@ func buildPrompt(categories []Category, transactions []Transaction) string {
 			ID:          tx.ID,
 			Description: tx.Description,
 			Merchant:    tx.Merchant,
-			Date:        tx.Date,
-			Amount:      fmt.Sprintf("$%.2f", tx.Amount),
 		}
 	}
 
@@ -120,8 +116,17 @@ func CategorizeTransactions(categories []Category, transactions []Transaction) (
 	chatCompletion, err := client.Chat.Completions.New(
 		context.Background(),
 		openai.ChatCompletionNewParams{
-			Model: MODEL,
+			Model:       MODEL,
+			Temperature: TEMPERATURE,
+			TopP:        TOP_P,
 			Messages: []openai.ChatCompletionMessageParamUnion{
+				{
+					OfSystem: &openai.ChatCompletionSystemMessageParam{
+						Content: openai.ChatCompletionSystemMessageParamContentUnion{
+							OfString: openai.String(``),
+						},
+					},
+				},
 				{
 					OfUser: &openai.ChatCompletionUserMessageParam{
 						Content: openai.ChatCompletionUserMessageParamContentUnion{
@@ -163,10 +168,17 @@ func CategorizeTransactions(categories []Category, transactions []Transaction) (
 	return result.Transactions, nil
 }
 
-func ApplyCategorizationToTransactions(categorized []CategorizedTransaction, transactions []Transaction) []Transaction {
+func ApplyCategorizationToTransactions(categories []Category, categorized []CategorizedTransaction, transactions []Transaction) []Transaction {
+	// map category name to category ID
+	categoryNameMap := make(map[string]string)
+	for _, cat := range categories {
+		categoryNameMap[cat.Name] = cat.ID
+	}
+
+	// map transaction ID to category ID
 	categoryMap := make(map[string]string)
 	for _, ct := range categorized {
-		categoryMap[ct.ID] = ct.CategoryID
+		categoryMap[ct.ID] = categoryNameMap[ct.Category]
 	}
 
 	result := make([]Transaction, len(transactions))
