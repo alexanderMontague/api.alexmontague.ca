@@ -38,6 +38,7 @@ type Transaction struct {
 	Amount          float64 `json:"amount"`
 	Description     string  `json:"description"`
 	AccountType     string  `json:"accountType"`
+	TransactionType string  `json:"transactionType"` // "DEBIT" (income) or "CREDIT" (expense)
 	CreatedAt       string  `json:"createdAt"`
 	UpdatedAt       string  `json:"updatedAt"`
 }
@@ -163,8 +164,9 @@ func CreateDefaultCategories(userID int) error {
 		{"Transportation", "#3b82f6"},
 		{"Bills & Utilities", "#f59e0b"},
 		{"Subscriptions", "#06b6d4"},
+		{"Mortgage", "#06b6d4"},
+		{"Insurance", "#06b6d4"},
 		{"Healthcare", "#10b981"},
-		{"Personal Care", "#a855f7"},
 		{"Other", "#6b7280"},
 	}
 
@@ -308,7 +310,7 @@ func DeleteAllBudgets(userID int) error {
 
 func GetTransactions(userID int) ([]Transaction, error) {
 	rows, err := database.DB.Query(`
-		SELECT id, budget_id, category_id, transaction_hash, date, merchant, amount, description, account_type, created_at, updated_at
+		SELECT id, budget_id, category_id, transaction_hash, date, merchant, amount, description, account_type, transaction_type, created_at, updated_at
 		FROM transactions
 		WHERE user_id = ?
 		ORDER BY date DESC
@@ -322,7 +324,7 @@ func GetTransactions(userID int) ([]Transaction, error) {
 	for rows.Next() {
 		var t Transaction
 		var categoryID sql.NullString
-		err := rows.Scan(&t.ID, &t.BudgetID, &categoryID, &t.TransactionHash, &t.Date, &t.Merchant, &t.Amount, &t.Description, &t.AccountType, &t.CreatedAt, &t.UpdatedAt)
+		err := rows.Scan(&t.ID, &t.BudgetID, &categoryID, &t.TransactionHash, &t.Date, &t.Merchant, &t.Amount, &t.Description, &t.AccountType, &t.TransactionType, &t.CreatedAt, &t.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -340,12 +342,56 @@ func SaveTransactions(transactions []Transaction, userID int) ([]Transaction, er
 		return nil, err
 	}
 
+	budgets, err := GetBudgets(userID)
+	if err != nil {
+		return nil, err
+	}
+
 	now := time.Now().Format("2006-01-02 15:04:05")
 	transactionsToSave := make([]Transaction, len(transactions))
+	budgetCache := make(map[string]string)
+
+	for _, b := range budgets {
+		budgetCache[b.Month] = b.ID
+	}
+
 	for i, t := range transactions {
 		t.ID = uuid.New().String()
 		t.CreatedAt = now
 		t.UpdatedAt = now
+
+		if t.TransactionType == "" {
+			t.TransactionType = "CREDIT"
+		}
+
+		transactionMonth := t.Date[:7]
+		if budgetID, exists := budgetCache[transactionMonth]; exists {
+			t.BudgetID = budgetID
+		} else {
+			allocations := make(map[string]float64)
+			for _, cat := range categories {
+				if cat.MonthlyBudget != nil {
+					allocations[cat.ID] = *cat.MonthlyBudget
+				} else {
+					allocations[cat.ID] = 0
+				}
+			}
+
+			newBudget := Budget{
+				Month:             transactionMonth,
+				Allocations:       allocations,
+				AvailableToBudget: 0,
+			}
+
+			savedBudget, err := SaveBudget(newBudget, userID)
+			if err != nil {
+				return nil, err
+			}
+
+			budgetCache[transactionMonth] = savedBudget.ID
+			t.BudgetID = savedBudget.ID
+		}
+
 		transactionsToSave[i] = t
 	}
 
@@ -383,8 +429,8 @@ func SaveTransactions(transactions []Transaction, userID int) ([]Transaction, er
 	defer dbTx.Rollback()
 
 	stmt, err := dbTx.Prepare(`
-		INSERT INTO transactions (id, budget_id, category_id, transaction_hash, date, merchant, amount, description, account_type, user_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO transactions (id, budget_id, category_id, transaction_hash, date, merchant, amount, description, account_type, transaction_type, user_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`)
 	if err != nil {
 		return nil, err
@@ -393,7 +439,7 @@ func SaveTransactions(transactions []Transaction, userID int) ([]Transaction, er
 
 	savedTransactions := []Transaction{}
 	for _, t := range transactionsToSave {
-		_, err = stmt.Exec(t.ID, t.BudgetID, t.CategoryID, t.TransactionHash, t.Date, t.Merchant, t.Amount, t.Description, t.AccountType, userID, t.CreatedAt, t.UpdatedAt)
+		_, err = stmt.Exec(t.ID, t.BudgetID, t.CategoryID, t.TransactionHash, t.Date, t.Merchant, t.Amount, t.Description, t.AccountType, t.TransactionType, userID, t.CreatedAt, t.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -419,9 +465,9 @@ func UpdateTransaction(id string, userID int, updates map[string]interface{}) (*
 	var t Transaction
 	var categoryID sql.NullString
 	err = tx.QueryRow(`
-		SELECT id, budget_id, category_id, transaction_hash, date, merchant, amount, description, account_type, created_at, updated_at
+		SELECT id, budget_id, category_id, transaction_hash, date, merchant, amount, description, account_type, transaction_type, created_at, updated_at
 		FROM transactions WHERE id = ? AND user_id = ?
-	`, id, userID).Scan(&t.ID, &t.BudgetID, &categoryID, &t.TransactionHash, &t.Date, &t.Merchant, &t.Amount, &t.Description, &t.AccountType, &t.CreatedAt, &t.UpdatedAt)
+	`, id, userID).Scan(&t.ID, &t.BudgetID, &categoryID, &t.TransactionHash, &t.Date, &t.Merchant, &t.Amount, &t.Description, &t.AccountType, &t.TransactionType, &t.CreatedAt, &t.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -450,13 +496,16 @@ func UpdateTransaction(id string, userID int, updates map[string]interface{}) (*
 	if accountType, ok := updates["accountType"].(string); ok {
 		t.AccountType = accountType
 	}
+	if transactionType, ok := updates["transactionType"].(string); ok {
+		t.TransactionType = transactionType
+	}
 	t.UpdatedAt = now
 
 	_, err = tx.Exec(`
 		UPDATE transactions
-		SET budget_id = ?, category_id = ?, date = ?, merchant = ?, amount = ?, description = ?, account_type = ?, updated_at = ?
+		SET budget_id = ?, category_id = ?, date = ?, merchant = ?, amount = ?, description = ?, account_type = ?, transaction_type = ?, updated_at = ?
 		WHERE id = ?
-	`, t.BudgetID, t.CategoryID, t.Date, t.Merchant, t.Amount, t.Description, t.AccountType, t.UpdatedAt, id)
+	`, t.BudgetID, t.CategoryID, t.Date, t.Merchant, t.Amount, t.Description, t.AccountType, t.TransactionType, t.UpdatedAt, id)
 
 	if err != nil {
 		return nil, err

@@ -12,8 +12,9 @@ import (
 	"github.com/openai/openai-go/v3/option"
 )
 
-var PROMPT_FILE = "assets/prompts/classify_transaction_v2.md"
-var MODEL = openai.ChatModelGPT4oMini
+var SYSTEM_PROMPT_FILE = "assets/prompts/classify_transaction/system.md"
+var USER_PROMPT_FILE = "assets/prompts/classify_transaction/user.md"
+var MODEL = openai.ChatModelGPT4_1Mini2025_04_14
 var TEMPERATURE = openai.Float(0.0)
 var TOP_P = openai.Float(1.0)
 
@@ -56,12 +57,14 @@ type XMLInput struct {
 	Transactions []XMLTransaction `xml:"transactions>transaction"`
 }
 
-func buildPrompt(categories []Category, transactions []Transaction) string {
-	promptBytes, err := os.ReadFile(PROMPT_FILE)
-	if err != nil {
-		return ""
+func buildPrompt(categories []Category, transactions []Transaction) (string, string) {
+	systemPromptBytes, systemErr := os.ReadFile(SYSTEM_PROMPT_FILE)
+	userPromptBytes, userErr := os.ReadFile(USER_PROMPT_FILE)
+	if systemErr != nil || userErr != nil {
+		return "", ""
 	}
-	prompt := string(promptBytes)
+	systemPrompt := string(systemPromptBytes)
+	userPrompt := string(userPromptBytes)
 
 	xmlCategories := make([]XMLCategory, len(categories))
 	for i, cat := range categories {
@@ -86,10 +89,10 @@ func buildPrompt(categories []Category, transactions []Transaction) string {
 
 	xmlOutput, err := xml.MarshalIndent(input, "", "  ")
 	if err != nil {
-		return prompt
+		return "", ""
 	}
 
-	return prompt + "\n\n" + string(xmlOutput)
+	return systemPrompt, userPrompt + "\n" + string(xmlOutput)
 }
 
 func CategorizeTransactions(categories []Category, transactions []Transaction) ([]CategorizedTransaction, error) {
@@ -100,10 +103,17 @@ func CategorizeTransactions(categories []Category, transactions []Transaction) (
 
 	client := openai.NewClient(option.WithAPIKey(apiKey))
 
-	prompt := buildPrompt(categories, transactions)
+	systemPrompt, userPrompt := buildPrompt(categories, transactions)
 
-	fmt.Println("\n=== Prompt Sent to OpenAI ===")
-	fmt.Println(prompt)
+	if systemPrompt == "" || userPrompt == "" {
+		return nil, fmt.Errorf("failed to build prompt")
+	}
+
+	fmt.Println("\n=== System Prompt Sent to OpenAI ===")
+	fmt.Println(systemPrompt)
+	fmt.Println("=============================\n")
+	fmt.Println("\n=== User Prompt Sent to OpenAI ===")
+	fmt.Println(userPrompt)
 	fmt.Println("=============================\n")
 
 	schemaParam := openai.ResponseFormatJSONSchemaJSONSchemaParam{
@@ -123,14 +133,14 @@ func CategorizeTransactions(categories []Category, transactions []Transaction) (
 				{
 					OfSystem: &openai.ChatCompletionSystemMessageParam{
 						Content: openai.ChatCompletionSystemMessageParamContentUnion{
-							OfString: openai.String(``),
+							OfString: openai.String(systemPrompt),
 						},
 					},
 				},
 				{
 					OfUser: &openai.ChatCompletionUserMessageParam{
 						Content: openai.ChatCompletionUserMessageParamContentUnion{
-							OfString: openai.String(prompt),
+							OfString: openai.String(userPrompt),
 						},
 					},
 				},
@@ -158,7 +168,7 @@ func CategorizeTransactions(categories []Category, transactions []Transaction) (
 
 	fmt.Println("\n=== OpenAI Raw Response ===")
 	fmt.Println(responseContent)
-	fmt.Println("===========================\n")
+	fmt.Println("=============================\n")
 
 	var result CategorizationResponse
 	if err := json.Unmarshal([]byte(responseContent), &result); err != nil {

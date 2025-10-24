@@ -54,6 +54,7 @@ func handleRequests() {
 
 	budgetRouter.HandleFunc("/categories", controllers.GetCategories).Methods("GET")
 	budgetRouter.HandleFunc("/categories", controllers.CreateCategory).Methods("POST")
+	budgetRouter.HandleFunc("/categories/defaults", controllers.CreateDefaultCategories).Methods("POST")
 	budgetRouter.HandleFunc("/categories/{id}", controllers.UpdateCategory).Methods("PUT")
 	budgetRouter.HandleFunc("/categories/{id}", controllers.DeleteCategory).Methods("DELETE")
 	budgetRouter.HandleFunc("/categories", controllers.DeleteAllCategories).Methods("DELETE")

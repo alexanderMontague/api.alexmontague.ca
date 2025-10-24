@@ -99,6 +99,25 @@ func DeleteAllCategories(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+func CreateDefaultCategories(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("content-type", "application/json")
+
+	authUser := middleware.GetAuthUser(r)
+	if err := repository.CreateDefaultCategories(authUser.UserID); err != nil {
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to create default categories", err)
+		return
+	}
+
+	categories, err := repository.GetCategories(authUser.UserID)
+	if err != nil {
+		logAndRespondError(w, http.StatusInternalServerError, "Failed to fetch categories", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(categories)
+}
+
 func GetBudgets(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("content-type", "application/json")
 
