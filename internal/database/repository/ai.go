@@ -6,6 +6,7 @@ import (
 	"encoding/xml"
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/invopop/jsonschema"
 	"github.com/openai/openai-go/v3"
@@ -17,6 +18,7 @@ var USER_PROMPT_FILE = "assets/prompts/classify_transaction/user.md"
 var MODEL = openai.ChatModelGPT4_1Mini2025_04_14
 var TEMPERATURE = openai.Float(0.0)
 var TOP_P = openai.Float(1.0)
+var BATCH_SIZE = 100
 
 type CategorizedTransaction struct {
 	ID       string `json:"id" jsonschema_description:"The unique ID of the transaction"`
@@ -95,26 +97,20 @@ func buildPrompt(categories []Category, transactions []Transaction) (string, str
 	return systemPrompt, userPrompt + "\n" + string(xmlOutput)
 }
 
-func CategorizeTransactions(categories []Category, transactions []Transaction) ([]CategorizedTransaction, error) {
-	apiKey := os.Getenv("OPEN_AI_API_KEY")
-	if apiKey == "" {
-		return nil, fmt.Errorf("OPEN_AI_API_KEY environment variable not set")
-	}
-
-	client := openai.NewClient(option.WithAPIKey(apiKey))
-
+func categorizeBatch(client openai.Client, categories []Category, transactions []Transaction, batchNum int) ([]CategorizedTransaction, error) {
 	systemPrompt, userPrompt := buildPrompt(categories, transactions)
 
 	if systemPrompt == "" || userPrompt == "" {
-		return nil, fmt.Errorf("failed to build prompt")
+		return nil, fmt.Errorf("failed to build prompt for batch %d", batchNum)
 	}
 
+	fmt.Printf("\n=== Batch %d: Processing %d transactions ===\n", batchNum, len(transactions))
 	fmt.Println("\n=== System Prompt Sent to OpenAI ===")
 	fmt.Println(systemPrompt)
-	fmt.Println("=============================\n")
+	fmt.Println("=============================")
 	fmt.Println("\n=== User Prompt Sent to OpenAI ===")
 	fmt.Println(userPrompt)
-	fmt.Println("=============================\n")
+	fmt.Println("=============================")
 
 	schemaParam := openai.ResponseFormatJSONSchemaJSONSchemaParam{
 		Name:        "categorization_response",
@@ -154,28 +150,83 @@ func CategorizeTransactions(categories []Category, transactions []Transaction) (
 	)
 
 	if err != nil {
-		return nil, fmt.Errorf("failed to call OpenAI API: %w", err)
+		return nil, fmt.Errorf("failed to call OpenAI API for batch %d: %w", batchNum, err)
 	}
 
 	if len(chatCompletion.Choices) == 0 {
-		return nil, fmt.Errorf("no response from OpenAI")
+		return nil, fmt.Errorf("no response from OpenAI for batch %d", batchNum)
 	}
 
 	responseContent := chatCompletion.Choices[0].Message.Content
 	if responseContent == "" {
-		return nil, fmt.Errorf("empty response from OpenAI")
+		return nil, fmt.Errorf("empty response from OpenAI for batch %d", batchNum)
 	}
 
-	fmt.Println("\n=== OpenAI Raw Response ===")
+	fmt.Printf("\n=== Batch %d: OpenAI Raw Response ===\n", batchNum)
 	fmt.Println(responseContent)
-	fmt.Println("=============================\n")
+	fmt.Println("=============================")
 
 	var result CategorizationResponse
 	if err := json.Unmarshal([]byte(responseContent), &result); err != nil {
-		return nil, fmt.Errorf("failed to parse OpenAI response: %w", err)
+		return nil, fmt.Errorf("failed to parse OpenAI response for batch %d: %w", batchNum, err)
 	}
 
 	return result.Transactions, nil
+}
+
+func CategorizeTransactions(categories []Category, transactions []Transaction) ([]CategorizedTransaction, error) {
+	apiKey := os.Getenv("OPEN_AI_API_KEY")
+	if apiKey == "" {
+		return nil, fmt.Errorf("OPEN_AI_API_KEY environment variable not set")
+	}
+
+	client := openai.NewClient(option.WithAPIKey(apiKey))
+
+	totalTransactions := len(transactions)
+	if totalTransactions == 0 {
+		return []CategorizedTransaction{}, nil
+	}
+
+	numBatches := (totalTransactions + BATCH_SIZE - 1) / BATCH_SIZE
+	fmt.Printf("\n=== Categorizing %d transactions in %d batches ===\n", totalTransactions, numBatches)
+
+	type batchResult struct {
+		transactions []CategorizedTransaction
+		err          error
+	}
+
+	results := make(chan batchResult, numBatches)
+	var wg sync.WaitGroup
+
+	for i := 0; i < numBatches; i++ {
+		wg.Add(1)
+		go func(batchNum int) {
+			defer wg.Done()
+
+			start := batchNum * BATCH_SIZE
+			end := start + BATCH_SIZE
+			if end > totalTransactions {
+				end = totalTransactions
+			}
+
+			batch := transactions[start:end]
+			categorized, err := categorizeBatch(client, categories, batch, batchNum+1)
+			results <- batchResult{transactions: categorized, err: err}
+		}(i)
+	}
+
+	wg.Wait()
+	close(results)
+
+	var allCategorized []CategorizedTransaction
+	for result := range results {
+		if result.err != nil {
+			return nil, result.err
+		}
+		allCategorized = append(allCategorized, result.transactions...)
+	}
+
+	return allCategorized, nil
 }
 
 func ApplyCategorizationToTransactions(categories []Category, categorized []CategorizedTransaction, transactions []Transaction) []Transaction {

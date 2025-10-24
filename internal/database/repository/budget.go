@@ -37,7 +37,7 @@ type Transaction struct {
 	Amount          float64 `json:"amount"`
 	Description     string  `json:"description"`
 	AccountType     string  `json:"accountType"`
-	TransactionType string  `json:"transactionType"` // "DEBIT" (income) or "CREDIT" (expense)
+	TransactionType string  `json:"transactionType"` // "DEBIT" (expense) or "CREDIT" (income)
 	CreatedAt       string  `json:"createdAt"`
 	UpdatedAt       string  `json:"updatedAt"`
 }
@@ -357,7 +357,7 @@ func SaveTransactions(transactions []Transaction, userID int) ([]Transaction, er
 		t.UpdatedAt = now
 
 		if t.TransactionType == "" {
-			t.TransactionType = "CREDIT"
+			t.TransactionType = "DEBIT"
 		}
 
 		transactionMonth := t.Date[:7]
