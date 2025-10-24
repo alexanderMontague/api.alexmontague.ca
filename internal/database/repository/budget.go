@@ -20,12 +20,11 @@ type Category struct {
 }
 
 type Budget struct {
-	ID                string             `json:"id"`
-	Month             string             `json:"month"`
-	Allocations       map[string]float64 `json:"allocations"`
-	AvailableToBudget float64            `json:"availableToBudget"`
-	CreatedAt         string             `json:"createdAt"`
-	UpdatedAt         string             `json:"updatedAt"`
+	ID          string             `json:"id"`
+	Month       string             `json:"month"`
+	Allocations map[string]float64 `json:"allocations"`
+	CreatedAt   string             `json:"createdAt"`
+	UpdatedAt   string             `json:"updatedAt"`
 }
 
 type Transaction struct {
@@ -187,7 +186,7 @@ func CreateDefaultCategories(userID int) error {
 
 func GetBudgets(userID int) ([]Budget, error) {
 	rows, err := database.DB.Query(`
-		SELECT id, month, allocations, available_to_budget, created_at, updated_at
+		SELECT id, month, allocations, created_at, updated_at
 		FROM budgets
 		WHERE user_id = ?
 		ORDER BY month DESC
@@ -201,7 +200,7 @@ func GetBudgets(userID int) ([]Budget, error) {
 	for rows.Next() {
 		var b Budget
 		var allocationsJSON string
-		err := rows.Scan(&b.ID, &b.Month, &allocationsJSON, &b.AvailableToBudget, &b.CreatedAt, &b.UpdatedAt)
+		err := rows.Scan(&b.ID, &b.Month, &allocationsJSON, &b.CreatedAt, &b.UpdatedAt)
 		if err != nil {
 			return nil, err
 		}
@@ -226,9 +225,9 @@ func SaveBudget(budget Budget, userID int) (*Budget, error) {
 	}
 
 	_, err = database.DB.Exec(`
-		INSERT INTO budgets (id, month, allocations, available_to_budget, user_id, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?)
-	`, budget.ID, budget.Month, string(allocationsJSON), budget.AvailableToBudget, userID, budget.CreatedAt, budget.UpdatedAt)
+		INSERT INTO budgets (id, month, allocations, user_id, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, budget.ID, budget.Month, string(allocationsJSON), userID, budget.CreatedAt, budget.UpdatedAt)
 
 	if err != nil {
 		return nil, err
@@ -248,9 +247,9 @@ func UpdateBudget(id string, userID int, updates map[string]interface{}) (*Budge
 	var budget Budget
 	var allocationsJSON string
 	err = tx.QueryRow(`
-		SELECT id, month, allocations, available_to_budget, created_at, updated_at
+		SELECT id, month, allocations, created_at, updated_at
 		FROM budgets WHERE id = ? AND user_id = ?
-	`, id, userID).Scan(&budget.ID, &budget.Month, &allocationsJSON, &budget.AvailableToBudget, &budget.CreatedAt, &budget.UpdatedAt)
+	`, id, userID).Scan(&budget.ID, &budget.Month, &allocationsJSON, &budget.CreatedAt, &budget.UpdatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -271,9 +270,6 @@ func UpdateBudget(id string, userID int, updates map[string]interface{}) (*Budge
 		}
 		budget.Allocations = alloc
 	}
-	if availableToBudget, ok := updates["availableToBudget"].(float64); ok {
-		budget.AvailableToBudget = availableToBudget
-	}
 	budget.UpdatedAt = now
 
 	newAllocationsJSON, err := json.Marshal(budget.Allocations)
@@ -283,9 +279,9 @@ func UpdateBudget(id string, userID int, updates map[string]interface{}) (*Budge
 
 	_, err = tx.Exec(`
 		UPDATE budgets
-		SET month = ?, allocations = ?, available_to_budget = ?, updated_at = ?
+		SET month = ?, allocations = ?, updated_at = ?
 		WHERE id = ?
-	`, budget.Month, string(newAllocationsJSON), budget.AvailableToBudget, budget.UpdatedAt, id)
+	`, budget.Month, string(newAllocationsJSON), budget.UpdatedAt, id)
 
 	if err != nil {
 		return nil, err
@@ -378,9 +374,8 @@ func SaveTransactions(transactions []Transaction, userID int) ([]Transaction, er
 			}
 
 			newBudget := Budget{
-				Month:             transactionMonth,
-				Allocations:       allocations,
-				AvailableToBudget: 0,
+				Month:       transactionMonth,
+				Allocations: allocations,
 			}
 
 			savedBudget, err := SaveBudget(newBudget, userID)
